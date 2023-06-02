@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
 
-project (CMP143)
+project (CG_TRABS)
 
 LINK_DIRECTORIES( ${CMAKE_SOURCE_DIR}/lib )
 
@@ -31,9 +31,9 @@ set(COMMON_LIBS ${COMMON_LIBS} ${EXTRA_LIBS})
 
 set(RUN_DIR ${PROJECT_SOURCE_DIR}/bin)
 
-add_executable(CMP143 src/main.cpp lib/gl3w.c shaders/triangles.vert shaders/triangles.frag)
-set_property(TARGET CMP143 PROPERTY DEBUG_POSTFIX _d)
-target_link_libraries(CMP143 ${COMMON_LIBS})
+add_executable(CG_TRABS src/main.cpp lib/gl3w.c shaders/main.vert shaders/main.frag shaders/triangles.vert shaders/triangles.frag)
+set_property(TARGET CG_TRABS PROPERTY DEBUG_POSTFIX _d)
+target_link_libraries(CG_TRABS ${COMMON_LIBS})
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_LINUX")
