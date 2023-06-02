@@ -27,20 +27,22 @@ typedef struct {
     GLuint       shader;
 } ShaderInfo;
 
-enum VAO_IDs { Triangles, NumVAOs };
+enum VAO_IDs    { Triangles, NumVAOs };
 enum Buffer_IDs { ArrayBuffer, colorBuffer, NumBuffers };
 enum Attrib_IDs { vPosition = 0, vColor = 1 };
+enum types      { point = 0, line = 1, triangle = 2 };
 
 GLuint VAOs[NumVAOs];
 GLuint Buffers[NumBuffers];
 
-const GLuint  NumVertices = 3;
+const GLuint  NumVertices  = 8;
+const GLuint  NumTriangles = 12;
 
 float g_ScreenRatio = 1.0f;
 float g_CameraDistance = 1.0f;
-bool  g_UsePerspectiveProjection = false;
+bool  g_UsePerspectiveProjection = true;
 bool  g_lookAt = true;
-
+int   g_chosenType = triangle;
 
 typedef struct PressedKeys{
 		bool w, a, s, d, space, shift;
@@ -152,7 +154,7 @@ GLuint LoadShaders(ShaderInfo* shaders)
 
 glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up_vec, glm::vec4 camera_pos){
     float delta = 0.1f;
-    glm::vec4 side_vec = crossproduct(-view_vec, up_vec);
+    glm::vec4 side_vec = crossproduct(view_vec, up_vec);
     if(g_keys.w)
         camera_pos += delta * view_vec;
     if(g_keys.s)
@@ -199,19 +201,73 @@ int main( int argc, char** argv )
     glGenVertexArrays(NumVAOs, VAOs);
     glBindVertexArray(VAOs[Triangles]);
 
-    GLfloat  vertices[NumVertices][2] = {
-        { -0.90f, -0.90f }, {  0.85f, -0.90f }, { -0.90f,  0.85f }  // Triangle Vertices
+    float v[NumVertices][3] = {
+        {  0.50f,  0.50f,  0.50f }, // 0
+        {  0.50f, -0.50f,  0.50f }, // 1
+        {  0.50f,  0.50f, -0.50f }, // 2
+        {  0.50f, -0.50f, -0.50f }, // 3
+        { -0.50f,  0.50f,  0.50f }, // 4
+        { -0.50f, -0.50f,  0.50f }, // 5
+        { -0.50f,  0.50f, -0.50f }, // 6
+        { -0.50f, -0.50f, -0.50f }  // 7
     };
 
-    GLfloat  color[NumVertices][4] = {
-        { 1.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } // Vertices Colors
+    GLfloat triangles[NumTriangles * 3][4] = {
+        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[1][0], v[1][1], v[1][2], 1.00f }, { v[3][0], v[3][1], v[3][2], 1.00f },
+        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[3][0], v[3][1], v[3][2], 1.00f }, { v[2][0], v[2][1], v[2][2], 1.00f },
+
+        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[5][0], v[5][1], v[5][2], 1.00f }, { v[1][0], v[1][1], v[1][2], 1.00f },
+        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[4][0], v[4][1], v[4][2], 1.00f }, { v[5][0], v[5][1], v[5][2], 1.00f },
+
+        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[1][0], v[1][1], v[1][2], 1.00f }, { v[6][0], v[6][1], v[6][2], 1.00f },
+        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[6][0], v[6][1], v[6][2], 1.00f }, { v[4][0], v[4][1], v[4][2], 1.00f },
+
+        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[5][0], v[5][1], v[5][2], 1.00f }, { v[4][0], v[4][1], v[4][2], 1.00f },
+        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[4][0], v[4][1], v[4][2], 1.00f }, { v[6][0], v[6][1], v[6][2], 1.00f },
+
+        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[6][0], v[6][1], v[6][2], 1.00f }, { v[2][0], v[2][1], v[2][2], 1.00f },
+        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[2][0], v[2][1], v[2][2], 1.00f }, { v[3][0], v[3][1], v[3][2], 1.00f },
+
+        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[5][0], v[5][1], v[5][2], 1.00f }, { v[1][0], v[1][1], v[1][2], 1.00f },
+        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[1][0], v[1][1], v[1][2], 1.00f }, { v[3][0], v[3][1], v[3][2], 1.00f }
+    };
+
+    GLfloat c[NumVertices][3] = {
+        {  1.00f,  0.00f, 0.00f  },
+        {  1.00f,  0.00f, 0.00f  },
+        {  1.00f,  0.00f, 0.00f  },
+        {  1.00f,  0.00f, 0.00f  },
+        {  1.00f,  0.00f, 0.00f  },
+        {  1.00f,  0.00f, 0.00f  },
+        {  1.00f,  0.00f, 0.00f  },
+        {  1.00f,  0.00f, 0.00f  }
+    };
+
+    GLfloat color[NumTriangles * 3][4] = {
+        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[1][0], c[1][1], c[1][2], 1.00f }, { c[3][0], c[3][1], c[3][2], 1.00f },
+        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[3][0], c[3][1], c[3][2], 1.00f }, { c[2][0], c[2][1], c[2][2], 1.00f },
+
+        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[5][0], c[5][1], c[5][2], 1.00f }, { c[1][0], c[1][1], c[1][2], 1.00f },
+        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[4][0], c[4][1], c[4][2], 1.00f }, { c[5][0], c[5][1], c[5][2], 1.00f },
+
+        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[1][0], c[1][1], c[1][2], 1.00f }, { c[6][0], c[6][1], c[6][2], 1.00f },
+        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[6][0], c[6][1], c[6][2], 1.00f }, { c[4][0], c[4][1], c[4][2], 1.00f },
+
+        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[5][0], c[5][1], c[5][2], 1.00f }, { c[4][0], c[4][1], c[4][2], 1.00f },
+        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[4][0], c[4][1], c[4][2], 1.00f }, { c[6][0], c[6][1], c[6][2], 1.00f },
+
+        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[6][0], c[6][1], c[6][2], 1.00f }, { c[2][0], c[2][1], c[2][2], 1.00f },
+        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[2][0], c[2][1], c[2][2], 1.00f }, { c[3][0], c[3][1], c[3][2], 1.00f },
+
+        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[5][0], c[5][1], c[5][2], 1.00f }, { c[1][0], c[1][1], c[1][2], 1.00f },
+        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[1][0], c[1][1], c[1][2], 1.00f }, { c[3][0], c[3][1], c[3][2], 1.00f }
     };
 
     glCreateBuffers(NumBuffers, Buffers);
     glBindBuffer(GL_ARRAY_BUFFER, Buffers[ArrayBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, sizeof(vertices), vertices, 0);
+    glBufferStorage(GL_ARRAY_BUFFER, sizeof(triangles), triangles, 0);
 
-    glVertexAttribPointer(vPosition, 2, GL_FLOAT,
+    glVertexAttribPointer(vPosition, 4, GL_FLOAT,
         GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vPosition);
 
@@ -226,7 +282,7 @@ int main( int argc, char** argv )
     GLint view_uniform       = glGetUniformLocation(program, "view");       // Variável da matriz "view" em shader_vertex.glsl
     GLint projection_uniform = glGetUniformLocation(program, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
 
-    glm::vec4 camera_position_c  = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);   // Ponto "c", centro da câmera
+    glm::vec4 camera_position_c  = glm::vec4(0.0f, 0.0f, 5.0f, 1.0f);   // Ponto "c", centro da câmera
     glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f);      // Ponto "l", para onde a câmera (look-at) estará sempre olhando
     glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f);      // Vetor "up" fixado para apontar para o "céu" (eito Y global)
@@ -240,14 +296,14 @@ int main( int argc, char** argv )
         if(g_lookAt)
             camera_view_vector = camera_lookat_l - camera_position_c;
         else
-            camera_view_vector = camera_lookat_l - camera_position_c;
+            camera_view_vector = camera_view_vector;
 
         glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
         glm::mat4 projection;
         glm::mat4 model = Matrix_Identity();
 
-        float nearplane = -0.0001f;  // Posição do "near plane"
-        float farplane  = -1000.0f;  // Posição do "far plane"
+        float nearplane = -0.000001f;  // Posição do "near plane"
+        float farplane  = -100000.0f;  // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -270,7 +326,21 @@ int main( int argc, char** argv )
         glClearBufferfv(GL_COLOR, 0, black);
 
         glBindVertexArray(VAOs[Triangles]);
-        glDrawArrays(GL_TRIANGLES, 0, NumVertices);
+
+        switch (g_chosenType){
+            case point:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+                break;
+
+            case line:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                break;
+
+            case triangle:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+
+        glDrawArrays(GL_TRIANGLES, 0, NumTriangles * 3);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -327,8 +397,14 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
 
-    if (key == GLFW_KEY_L && action == GLFW_PRESS)
+    if (key == GLFW_KEY_P && action == GLFW_PRESS)
+        g_UsePerspectiveProjection = !g_UsePerspectiveProjection;
+
+    if (key == GLFW_KEY_C && action == GLFW_PRESS)
         g_lookAt = !g_lookAt;
+
+    if (key == GLFW_KEY_E && action == GLFW_PRESS)
+        g_chosenType = g_chosenType == triangle ? point : g_chosenType+1;
 
     if (key == GLFW_KEY_W && action == GLFW_PRESS)
         g_keys.w = true;
