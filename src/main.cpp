@@ -16,7 +16,8 @@
 #include <glm/vec4.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "matrices.h"
+#include "./matrices/matrices.h"
+#include "./matrices/printMatrices.h"
 
 #define BUFFER_OFFSET(a) ((void*)(a))
 
