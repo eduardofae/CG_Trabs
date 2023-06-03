@@ -133,11 +133,14 @@ int main( int argc, char** argv )
     GLint model_uniform      = glGetUniformLocation(program, "model");      // Variável da matriz "model"
     GLint view_uniform       = glGetUniformLocation(program, "view");       // Variável da matriz "view" em shader_vertex.glsl
     GLint projection_uniform = glGetUniformLocation(program, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
+    glm::mat4 view;
+    glm::mat4 projection;
+    glm::mat4 model = Matrix_Scale(1, 1, 1) * Matrix_Translate(-Obj.center.x, -Obj.center.y, -Obj.center.z);
 
     glm::vec4 camera_position_c  = glm::vec4(100.0f, 200.0f, 1000.0f, 1.0f);        // Ponto "c", centro da câmera
-    glm::vec4 camera_lookat_l    = glm::vec4(Obj.position.at(0), 1.0f);             // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+    glm::vec4 camera_lookat_l    = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);               // Ponto "l", para onde a câmera (look-at) estará sempre olhando
     glm::vec4 camera_view_vector = normalize(camera_lookat_l - camera_position_c);  // Vetor "view", sentido para onde a câmera está virada
-    glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f);                  // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+    glm::vec4 camera_up_vector   = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);               // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
     while (!glfwWindowShouldClose(window))
     {
@@ -147,21 +150,17 @@ int main( int argc, char** argv )
         
         if(g_lookAt)
             camera_view_vector = normalize(camera_lookat_l - camera_position_c);
-
-        glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
-        glm::mat4 projection;
-        glm::mat4 model = Matrix_Identity();
+        
+        view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
         float nearplane = -0.0000000000001f;  // Posição do "near plane"
         float farplane  = -1000000000000.0f;  // Posição do "far plane"
 
-        if (g_UsePerspectiveProjection)
-        {
+        if (g_UsePerspectiveProjection) {
             float field_of_view = 3.141592f / 3.0f;
             projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
         }
-        else
-        {
+        else {
             float t = 1.5f*g_CameraDistance/2.5f;
             float b = -t;
             float r = t*g_ScreenRatio;

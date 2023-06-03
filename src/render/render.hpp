@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <array>
+#include <algorithm>
 
 // Headers da biblioteca GLM: criação de matrizes e vetores.
 #include <glm/mat4x4.hpp>
@@ -36,6 +37,7 @@ typedef struct {
     std::vector<glm::vec3> face_normal;
     std::vector<int> material_id;
     std::vector<glm::vec3> color;
+    glm::vec3 center;
 } ObjectInfo;
 
 static const GLchar* ReadShader(const char* filename);

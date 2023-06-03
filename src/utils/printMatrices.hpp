@@ -7,7 +7,7 @@
 
 
 void PrintMatrix(glm::mat4 M);
-void PrintVector(glm::vec3 v);
+void PrintVector(glm::vec4 v);
 void PrintMatrixVectorProduct(glm::mat4 M, glm::vec4 v);
 
 

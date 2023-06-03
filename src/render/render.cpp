@@ -122,7 +122,8 @@ ObjectInfo ReadObject(char *FileName)
     
     printf ("Reading in %s (%d triangles). . .\n", FileName, numTris);
     ObjectInfo Obj;
-    
+    glm::vec3 max, min;
+
     for (int i=0; i < numTris * 3; i++) // read triangles
     {
         glm::vec3 pos, norm, face_norm;
@@ -136,8 +137,15 @@ ObjectInfo ReadObject(char *FileName)
         Obj.normal.emplace_back(norm);
         Obj.material_id.emplace_back(material_id);
 
-        
+        if(i == 0) { max = pos; min = pos; }
 
+        max = { std::max(max.x, pos.x),
+                std::max(max.y, pos.y),
+                std::max(max.z, pos.z)};
+        min = { std::min(min.x, pos.x),
+                std::min(min.y, pos.y),
+                std::min(min.z, pos.z)};
+    
         if((i + 1) % 3 == 0){
             fscanf(fp, "face normal %f %f %f\n",
                 &(face_norm.x), &(face_norm.y), &(face_norm.z));
@@ -150,6 +158,8 @@ ObjectInfo ReadObject(char *FileName)
     fclose(fp);
 
     printf("File read with success!\n");
+
+    Obj.center = (glm::vec3(max.x - min.x, max.y - min.y, max.z - min.z) / 2.0f) + min;
 
     return Obj;
 } 

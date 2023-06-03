@@ -11,13 +11,13 @@ void PrintMatrix(glm::mat4 M)
 }
 
 // Função que imprime um vetor v no terminal
-void PrintVector(glm::vec3 v)
+void PrintVector(glm::vec4 v)
 {
     printf("\n");
     printf("[ %+0.2f ]\n", v[0]);
     printf("[ %+0.2f ]\n", v[1]);
     printf("[ %+0.2f ]\n", v[2]);
-    //printf("[ %+0.2f ]\n", v[3]);
+    printf("[ %+0.2f ]\n", v[3]);
 }
 
 // Função que imprime o produto de uma matriz por um vetor no terminal
