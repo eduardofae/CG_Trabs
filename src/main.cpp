@@ -24,8 +24,8 @@
 #include "./render/cube.hpp"
 
 enum VAO_IDs    { Triangles, NumVAOs };
-enum Buffer_IDs { ArrayBuffer, colorBuffer, NumBuffers };
-enum Attrib_IDs { vPosition = 0, vColor = 1 };
+enum Buffer_IDs { ArrayBuffer, NormalBuffer, ColorBuffer, NumBuffers };
+enum Attrib_IDs { vPosition = 0, vNormal = 1, vColor = 2 };
 enum types      { point = 0, line = 1, triangle = 2 };
 
 GLuint VAOs[NumVAOs];
@@ -36,10 +36,13 @@ float  g_CameraDistance = 1.0f;
 bool   g_UsePerspectiveProjection = true;
 bool   g_lookAt = true;
 bool   g_reset = false;
+bool   g_useColor = true;
+bool   g_windingOrder = true;
+bool   g_backFaceCulling = true;
 int    g_chosenType = triangle;
 double g_LastCursorPosX, g_LastCursorPosY;
 
-glm::vec4 g_camera_initial_position = glm::vec4(100.0f, 200.0f, 1000.0f, 1.0f);
+glm::vec4 g_cameraInitialPosition = glm::vec4(100.0f, 200.0f, 1000.0f, 1.0f);
 
 typedef struct PressedKeys{
 		bool w, a, s, d, space, shift;
@@ -71,7 +74,7 @@ glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up_vec, glm::vec4 camera_pos){
     if(g_keys.shift)
         camera_pos -= delta * up_vec;
     if(g_reset)
-        camera_pos = g_camera_initial_position;
+        camera_pos = g_cameraInitialPosition;
     return camera_pos;
 }
 
@@ -113,6 +116,12 @@ int main( int argc, char** argv )
         vertices.emplace_back(obj.y);
         vertices.emplace_back(obj.z);
     }
+    std::vector<GLfloat> normals;
+    for(auto &obj : Obj.normal){
+        normals.emplace_back(obj.x);
+        normals.emplace_back(obj.y);
+        normals.emplace_back(obj.z);
+    }
     std::vector<GLfloat> colors;
     for(auto &obj : Obj.color){
         colors.emplace_back(obj.x);
@@ -128,7 +137,14 @@ int main( int argc, char** argv )
         GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vPosition);
 
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[colorBuffer]);
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[NormalBuffer]);
+    glBufferStorage(GL_ARRAY_BUFFER, normals.size()*sizeof(GLfloat), normals.data(), 0);
+
+    glVertexAttribPointer(vNormal, 3, GL_FLOAT,
+        GL_FALSE, 0, BUFFER_OFFSET(0));
+    glEnableVertexAttribArray(vNormal);
+
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[ColorBuffer]);
     glBufferStorage(GL_ARRAY_BUFFER, colors.size()*sizeof(GLfloat), colors.data(), 0);
 
     glVertexAttribPointer(vColor, 3, GL_FLOAT,
@@ -142,7 +158,7 @@ int main( int argc, char** argv )
     glm::mat4 projection;
     glm::mat4 model = Matrix_Scale(1, 1, 1) * Matrix_Translate(-Obj.center.x, -Obj.center.y, -Obj.center.z);
 
-    glm::vec4 camera_position_c  = g_camera_initial_position;                       // Ponto "c", centro da câmera
+    glm::vec4 camera_position_c  = g_cameraInitialPosition;                         // Ponto "c", centro da câmera
     glm::vec4 camera_lookat_l    = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);               // Ponto "l", para onde a câmera (look-at) estará sempre olhando
     glm::vec4 camera_view_vector = normalize(camera_lookat_l - camera_position_c);  // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector   = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);               // Vetor "up" fixado para apontar para o "céu" (eito Y global)
@@ -193,6 +209,12 @@ int main( int argc, char** argv )
             case triangle:
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
+
+        if (g_windingOrder) glFrontFace(GL_CW);
+        else glFrontFace(GL_CCW);
+
+        if(g_backFaceCulling) glEnable(GL_CULL_FACE); 
+        else glDisable(GL_CULL_FACE);
 
         glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
@@ -253,6 +275,12 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
 
     if (key == GLFW_KEY_C && action == GLFW_PRESS)
         g_lookAt = !g_lookAt;
+
+    if (key == GLFW_KEY_O && action == GLFW_PRESS)
+        g_windingOrder = !g_windingOrder;
+
+    if (key == GLFW_KEY_B && action == GLFW_PRESS)
+        g_backFaceCulling = !g_backFaceCulling;
 
     if (key == GLFW_KEY_E && action == GLFW_PRESS)
         g_chosenType = g_chosenType == triangle ? point : g_chosenType+1;
