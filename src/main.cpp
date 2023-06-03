@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////////
 //
-//  Triangles.cpp
+//  Main.cpp
 //
 //////////////////////////////////////////////////////////////////////////////
 
@@ -10,22 +10,18 @@
 #include <GLFW/glfw3.h>
 #include <cstdlib>
 #include <iostream>
+#include <vector>
 
 // Headers da biblioteca GLM: criação de matrizes e vetores.
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "./matrices/matrices.h"
-#include "./matrices/printMatrices.h"
 
-#define BUFFER_OFFSET(a) ((void*)(a))
-
-typedef struct {
-    GLenum       type;
-    const char* filename;
-    GLuint       shader;
-} ShaderInfo;
+#include "./utils/matrices.hpp"
+#include "./utils/printMatrices.hpp"
+#include "./render/render.hpp"
+#include "./render/cube.hpp"
 
 enum VAO_IDs    { Triangles, NumVAOs };
 enum Buffer_IDs { ArrayBuffer, colorBuffer, NumBuffers };
@@ -35,14 +31,12 @@ enum types      { point = 0, line = 1, triangle = 2 };
 GLuint VAOs[NumVAOs];
 GLuint Buffers[NumBuffers];
 
-const GLuint  NumVertices  = 8;
-const GLuint  NumTriangles = 12;
-
-float g_ScreenRatio = 1.0f;
-float g_CameraDistance = 1.0f;
-bool  g_UsePerspectiveProjection = true;
-bool  g_lookAt = true;
-int   g_chosenType = triangle;
+float  g_ScreenRatio = 1.0f;
+float  g_CameraDistance = 1.0f;
+bool   g_UsePerspectiveProjection = true;
+bool   g_lookAt = true;
+int    g_chosenType = triangle;
+double g_LastCursorPosX, g_LastCursorPosY;
 
 typedef struct PressedKeys{
 		bool w, a, s, d, space, shift;
@@ -57,100 +51,6 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-
-static const GLchar* ReadShader(const char* filename)
-{
-    FILE* infile = fopen(filename, "rb");
-
-    if (!infile) {
-        std::cerr << "Unable to open file '" << filename << "'" << std::endl;
-        return NULL;
-    }
-
-    fseek(infile, 0, SEEK_END);
-    int len = ftell(infile);
-    fseek(infile, 0, SEEK_SET);
-
-    GLchar* source = new GLchar[len + 1];
-
-    fread(source, 1, len, infile);
-    fclose(infile);
-
-    source[len] = 0;
-
-    return const_cast<const GLchar*>(source);
-}
-
-
-GLuint LoadShaders(ShaderInfo* shaders)
-{
-    if (shaders == NULL) { return 0; }
-
-    GLuint program = glCreateProgram();
-
-    ShaderInfo* entry = shaders;
-    while (entry->type != GL_NONE) {
-        GLuint shader = glCreateShader(entry->type);
-
-        entry->shader = shader;
-
-        const GLchar* source = ReadShader(entry->filename);
-        if (source == NULL) {
-            for (entry = shaders; entry->type != GL_NONE; ++entry) {
-                glDeleteShader(entry->shader);
-                entry->shader = 0;
-            }
-
-            return 0;
-        }
-
-        glShaderSource(shader, 1, &source, NULL);
-        delete[] source;
-
-        glCompileShader(shader);
-
-        GLint compiled;
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-        if (!compiled) {
-            GLsizei len;
-            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
-
-            GLchar* log = new GLchar[len + 1];
-            glGetShaderInfoLog(shader, len, &len, log);
-            std::cerr << "Shader compilation failed: " << log << std::endl;
-            delete[] log;
-
-            return 0;
-        }
-
-        glAttachShader(program, shader);
-
-        ++entry;
-    }
-
-    glLinkProgram(program);
-
-    GLint linked;
-    glGetProgramiv(program, GL_LINK_STATUS, &linked);
-    if (!linked) {
-        GLsizei len;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
-
-        GLchar* log = new GLchar[len + 1];
-        glGetProgramInfoLog(program, len, &len, log);
-        std::cerr << "Shader linking failed: " << log << std::endl;
-        delete[] log;
-
-        for (entry = shaders; entry->type != GL_NONE; ++entry) {
-            glDeleteShader(entry->shader);
-            entry->shader = 0;
-        }
-
-        return 0;
-    }
-
-    return program;
-}
 
 glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up_vec, glm::vec4 camera_pos){
     float delta = 0.1f;
@@ -200,81 +100,35 @@ int main( int argc, char** argv )
 
     glGenVertexArrays(NumVAOs, VAOs);
     glBindVertexArray(VAOs[Triangles]);
+    ObjectInfo Obj = ReadObject("../objs/cow.in");
 
-    float v[NumVertices][3] = {
-        {  0.50f,  0.50f,  0.50f }, // 0
-        {  0.50f, -0.50f,  0.50f }, // 1
-        {  0.50f,  0.50f, -0.50f }, // 2
-        {  0.50f, -0.50f, -0.50f }, // 3
-        { -0.50f,  0.50f,  0.50f }, // 4
-        { -0.50f, -0.50f,  0.50f }, // 5
-        { -0.50f,  0.50f, -0.50f }, // 6
-        { -0.50f, -0.50f, -0.50f }  // 7
-    };
-
-    GLfloat triangles[NumTriangles * 3][4] = {
-        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[1][0], v[1][1], v[1][2], 1.00f }, { v[3][0], v[3][1], v[3][2], 1.00f },
-        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[3][0], v[3][1], v[3][2], 1.00f }, { v[2][0], v[2][1], v[2][2], 1.00f },
-
-        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[5][0], v[5][1], v[5][2], 1.00f }, { v[1][0], v[1][1], v[1][2], 1.00f },
-        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[4][0], v[4][1], v[4][2], 1.00f }, { v[5][0], v[5][1], v[5][2], 1.00f },
-
-        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[1][0], v[1][1], v[1][2], 1.00f }, { v[6][0], v[6][1], v[6][2], 1.00f },
-        { v[0][0], v[0][1], v[0][2], 1.00f }, { v[6][0], v[6][1], v[6][2], 1.00f }, { v[4][0], v[4][1], v[4][2], 1.00f },
-
-        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[5][0], v[5][1], v[5][2], 1.00f }, { v[4][0], v[4][1], v[4][2], 1.00f },
-        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[4][0], v[4][1], v[4][2], 1.00f }, { v[6][0], v[6][1], v[6][2], 1.00f },
-
-        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[6][0], v[6][1], v[6][2], 1.00f }, { v[2][0], v[2][1], v[2][2], 1.00f },
-        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[2][0], v[2][1], v[2][2], 1.00f }, { v[3][0], v[3][1], v[3][2], 1.00f },
-
-        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[5][0], v[5][1], v[5][2], 1.00f }, { v[1][0], v[1][1], v[1][2], 1.00f },
-        { v[7][0], v[7][1], v[7][2], 1.00f }, { v[1][0], v[1][1], v[1][2], 1.00f }, { v[3][0], v[3][1], v[3][2], 1.00f }
-    };
-
-    GLfloat c[NumVertices][3] = {
-        {  1.00f,  0.00f, 0.00f  },
-        {  1.00f,  0.00f, 0.00f  },
-        {  1.00f,  0.00f, 0.00f  },
-        {  1.00f,  0.00f, 0.00f  },
-        {  1.00f,  0.00f, 0.00f  },
-        {  1.00f,  0.00f, 0.00f  },
-        {  1.00f,  0.00f, 0.00f  },
-        {  1.00f,  0.00f, 0.00f  }
-    };
-
-    GLfloat color[NumTriangles * 3][4] = {
-        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[1][0], c[1][1], c[1][2], 1.00f }, { c[3][0], c[3][1], c[3][2], 1.00f },
-        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[3][0], c[3][1], c[3][2], 1.00f }, { c[2][0], c[2][1], c[2][2], 1.00f },
-
-        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[5][0], c[5][1], c[5][2], 1.00f }, { c[1][0], c[1][1], c[1][2], 1.00f },
-        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[4][0], c[4][1], c[4][2], 1.00f }, { c[5][0], c[5][1], c[5][2], 1.00f },
-
-        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[1][0], c[1][1], c[1][2], 1.00f }, { c[6][0], c[6][1], c[6][2], 1.00f },
-        { c[0][0], c[0][1], c[0][2], 1.00f }, { c[6][0], c[6][1], c[6][2], 1.00f }, { c[4][0], c[4][1], c[4][2], 1.00f },
-
-        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[5][0], c[5][1], c[5][2], 1.00f }, { c[4][0], c[4][1], c[4][2], 1.00f },
-        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[4][0], c[4][1], c[4][2], 1.00f }, { c[6][0], c[6][1], c[6][2], 1.00f },
-
-        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[6][0], c[6][1], c[6][2], 1.00f }, { c[2][0], c[2][1], c[2][2], 1.00f },
-        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[2][0], c[2][1], c[2][2], 1.00f }, { c[3][0], c[3][1], c[3][2], 1.00f },
-
-        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[5][0], c[5][1], c[5][2], 1.00f }, { c[1][0], c[1][1], c[1][2], 1.00f },
-        { c[7][0], c[7][1], c[7][2], 1.00f }, { c[1][0], c[1][1], c[1][2], 1.00f }, { c[3][0], c[3][1], c[3][2], 1.00f }
-    };
+    std::vector<GLfloat> vertices;
+    for(auto &obj : Obj.position){
+        vertices.emplace_back(obj.x);
+        vertices.emplace_back(obj.y);
+        vertices.emplace_back(obj.z);
+    }
+    PrintVector(Obj.position.at(1000));
+    std::vector<GLfloat> colors;
+    for(auto &obj : Obj.color){
+        colors.emplace_back(obj.x);
+        colors.emplace_back(obj.y);
+        colors.emplace_back(obj.z);
+    }
+    printf("%f %f %f\n", colors[0], colors[1], colors[2]);
 
     glCreateBuffers(NumBuffers, Buffers);
     glBindBuffer(GL_ARRAY_BUFFER, Buffers[ArrayBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, sizeof(triangles), triangles, 0);
+    glBufferStorage(GL_ARRAY_BUFFER, vertices.size()*sizeof(GLfloat), vertices.data(), 0);
 
-    glVertexAttribPointer(vPosition, 4, GL_FLOAT,
+    glVertexAttribPointer(vPosition, 3, GL_FLOAT,
         GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vPosition);
 
     glBindBuffer(GL_ARRAY_BUFFER, Buffers[colorBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, sizeof(color), color, 0);
+    glBufferStorage(GL_ARRAY_BUFFER, colors.size()*sizeof(GLfloat), colors.data(), 0);
 
-    glVertexAttribPointer(vColor, 4, GL_FLOAT,
+    glVertexAttribPointer(vColor, 3, GL_FLOAT,
         GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vColor);
 
@@ -282,8 +136,8 @@ int main( int argc, char** argv )
     GLint view_uniform       = glGetUniformLocation(program, "view");       // Variável da matriz "view" em shader_vertex.glsl
     GLint projection_uniform = glGetUniformLocation(program, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
 
-    glm::vec4 camera_position_c  = glm::vec4(0.0f, 0.0f, 5.0f, 1.0f);   // Ponto "c", centro da câmera
-    glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f);      // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+    glm::vec4 camera_position_c  = glm::vec4(0.0f, 0.0f, 100.0f, 1.0f);   // Ponto "c", centro da câmera
+    glm::vec4 camera_lookat_l    = glm::vec4(Obj.position.at(0), 1.0f);      // Ponto "l", para onde a câmera (look-at) estará sempre olhando
     glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f);      // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
@@ -302,8 +156,8 @@ int main( int argc, char** argv )
         glm::mat4 projection;
         glm::mat4 model = Matrix_Identity();
 
-        float nearplane = -0.000001f;  // Posição do "near plane"
-        float farplane  = -100000.0f;  // Posição do "far plane"
+        float nearplane = -0.0000000000001f;  // Posição do "near plane"
+        float farplane  = -1000000000000.0f;  // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -340,7 +194,7 @@ int main( int argc, char** argv )
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
 
-        glDrawArrays(GL_TRIANGLES, 0, NumTriangles * 3);
+        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -357,9 +211,6 @@ void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 
     g_ScreenRatio = (float)width / height;
 }
-
-
-double g_LastCursorPosX, g_LastCursorPosY;
 
 // Função callback chamada sempre que o usuário aperta algum dos botões do mouse
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
@@ -405,9 +256,6 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
 
     if (key == GLFW_KEY_E && action == GLFW_PRESS)
         g_chosenType = g_chosenType == triangle ? point : g_chosenType+1;
-
-    if (key == GLFW_KEY_W && action == GLFW_PRESS)
-        g_keys.w = true;
 
     if (key == GLFW_KEY_W && action == GLFW_PRESS)
         g_keys.w = true;

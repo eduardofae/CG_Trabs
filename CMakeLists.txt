@@ -31,7 +31,7 @@ set(COMMON_LIBS ${COMMON_LIBS} ${EXTRA_LIBS})
 
 set(RUN_DIR ${PROJECT_SOURCE_DIR}/bin)
 
-add_executable(CG_TRABS src/main.cpp lib/gl3w.c shaders/main.vert shaders/main.frag shaders/triangles.vert shaders/triangles.frag)
+add_executable(CG_TRABS src/main.cpp lib/gl3w.c shaders/main.vert shaders/main.frag shaders/triangles.vert shaders/triangles.frag src/render/render.cpp src/render/cube.cpp src/utils/matrices.cpp src/utils/printMatrices.cpp)
 set_property(TARGET CG_TRABS PROPERTY DEBUG_POSTFIX _d)
 target_link_libraries(CG_TRABS ${COMMON_LIBS})
 
