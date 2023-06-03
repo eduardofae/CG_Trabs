@@ -53,7 +53,7 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
 glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up_vec, glm::vec4 camera_pos){
-    float delta = 0.1f;
+    float delta = 50.0f;
     glm::vec4 side_vec = crossproduct(view_vec, up_vec);
     if(g_keys.w)
         camera_pos += delta * view_vec;
@@ -108,14 +108,12 @@ int main( int argc, char** argv )
         vertices.emplace_back(obj.y);
         vertices.emplace_back(obj.z);
     }
-    PrintVector(Obj.position.at(1000));
     std::vector<GLfloat> colors;
     for(auto &obj : Obj.color){
         colors.emplace_back(obj.x);
         colors.emplace_back(obj.y);
         colors.emplace_back(obj.z);
     }
-    printf("%f %f %f\n", colors[0], colors[1], colors[2]);
 
     glCreateBuffers(NumBuffers, Buffers);
     glBindBuffer(GL_ARRAY_BUFFER, Buffers[ArrayBuffer]);
@@ -136,10 +134,10 @@ int main( int argc, char** argv )
     GLint view_uniform       = glGetUniformLocation(program, "view");       // Variável da matriz "view" em shader_vertex.glsl
     GLint projection_uniform = glGetUniformLocation(program, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
 
-    glm::vec4 camera_position_c  = glm::vec4(0.0f, 0.0f, 100.0f, 1.0f);   // Ponto "c", centro da câmera
-    glm::vec4 camera_lookat_l    = glm::vec4(Obj.position.at(0), 1.0f);      // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-    glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
-    glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f);      // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+    glm::vec4 camera_position_c  = glm::vec4(100.0f, 200.0f, 1000.0f, 1.0f);        // Ponto "c", centro da câmera
+    glm::vec4 camera_lookat_l    = glm::vec4(Obj.position.at(0), 1.0f);             // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+    glm::vec4 camera_view_vector = normalize(camera_lookat_l - camera_position_c);  // Vetor "view", sentido para onde a câmera está virada
+    glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f);                  // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
     while (!glfwWindowShouldClose(window))
     {
@@ -148,9 +146,7 @@ int main( int argc, char** argv )
         camera_position_c  = moveCam(camera_view_vector, camera_up_vector, camera_position_c); 
         
         if(g_lookAt)
-            camera_view_vector = camera_lookat_l - camera_position_c;
-        else
-            camera_view_vector = camera_view_vector;
+            camera_view_vector = normalize(camera_lookat_l - camera_position_c);
 
         glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
         glm::mat4 projection;

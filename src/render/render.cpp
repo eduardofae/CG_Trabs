@@ -151,8 +151,6 @@ ObjectInfo ReadObject(char *FileName)
 
     printf("File read with success!\n");
 
-    PrintVector(Obj.position.at(0));
-
     return Obj;
 } 
 
