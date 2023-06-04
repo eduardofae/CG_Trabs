@@ -127,9 +127,8 @@ ObjectInfo ReadObject(char *FileName)
     for (int i=0; i < numTris * 3; i++) // read triangles
     {
         glm::vec3 pos, norm, face_norm;
-        int material_id, fuck;
-        fscanf(fp, "v%d %f %f %f %f %f %f %d\n",
-            &(fuck),
+        int material_id;
+        fscanf(fp, "v%*d %f %f %f %f %f %f %d\n",
             &(pos.x), &(pos.y), &(pos.z),
             &(norm.x), &(norm.y), &(norm.z),
             &(material_id));

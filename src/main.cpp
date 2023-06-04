@@ -6,9 +6,11 @@
 
 #include <GL3/gl3.h>
 #include <GL3/gl3w.h>
-#include <imgui/imgui.h>
-
 #include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <imgui_impl_opengl3.h>
+#include <imgui_impl_glfw.h>
+
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -27,23 +29,24 @@
 enum VAO_IDs    { Triangles, NumVAOs };
 enum Buffer_IDs { ArrayBuffer, NormalBuffer, ColorBuffer, NumBuffers };
 enum Attrib_IDs { vPosition = 0, vNormal = 1, vColor = 2 };
-enum types      { point = 0, line = 1, triangle = 2 };
+enum rType      { point = 0, line = 1, triangle = 2 };
+enum orders     { cw = 0, ccw = 1 };
+enum cStyle     { cLookAt = 0, cFree = 1 };
+enum pType      { perspective = 0, ortographic = 1 };
 
 GLuint VAOs[NumVAOs];
 GLuint Buffers[NumBuffers];
 
 float  g_ScreenRatio = 1.0f;
-float  g_CameraDistance = 1.0f;
-bool   g_UsePerspectiveProjection = true;
-bool   g_lookAt = true;
+float  g_CameraDistance = 1000.0f;
+int    g_projectionType = perspective;
+int    g_cStyle = cLookAt;
 bool   g_reset = false;
-bool   g_useColor = true;
-bool   g_windingOrder = true;
+int    g_windingOrder = cw;
 bool   g_backFaceCulling = true;
 int    g_chosenType = triangle;
 double g_LastCursorPosX, g_LastCursorPosY;
 
-glm::vec3 g_color = glm::vec3(1.0f, 1.0f, 1.0f);
 glm::vec4 g_cameraInitialPosition = glm::vec4(100.0f, 200.0f, 1000.0f, 1.0f);
 
 typedef struct PressedKeys{
@@ -60,9 +63,10 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
-glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up_vec, glm::vec4 camera_pos){
+glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up, glm::vec4 camera_pos){
     float delta = 50.0f;
-    glm::vec4 side_vec = crossproduct(view_vec, up_vec);
+    glm::vec4 side_vec = crossproduct(view_vec, up);
+    glm::vec4 up_vec = crossproduct(side_vec, view_vec);
     if(g_keys.w)
         camera_pos += delta * view_vec;
     if(g_keys.s)
@@ -80,7 +84,6 @@ glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up_vec, glm::vec4 camera_pos){
     return camera_pos;
 }
 
-
 int main( int argc, char** argv )
 {
     glfwInit();
@@ -97,6 +100,16 @@ int main( int argc, char** argv )
 
     glfwMakeContextCurrent(window);
     gl3wInit();
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
 
     ShaderInfo  shaders[] =
     {
@@ -162,6 +175,12 @@ int main( int argc, char** argv )
     glm::vec4 camera_view_vector = normalize(camera_lookat_l - camera_position_c);  // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector   = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);               // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
+    bool  g_useColor = true;
+    float color[3]      = { 1.0f, 1.0f, 1.0f }; // Cor sendo usada
+    float nearplane     = 0.01f;                // Posição do "near plane"
+    float farplane      = 5000.0f;              // Posição do "far plane"
+    float field_of_view = 60.0f;                // Campo de visão
+
     while (!glfwWindowShouldClose(window))
     {
         static const float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -169,30 +188,25 @@ int main( int argc, char** argv )
 
         camera_position_c  = moveCam(camera_view_vector, camera_up_vector, camera_position_c);
         
-        if(g_lookAt)
+        if(g_cStyle == cLookAt)
             camera_view_vector = normalize(camera_lookat_l - camera_position_c);
         
         view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
-        float nearplane = -0.0000000000001f;  // Posição do "near plane"
-        float farplane  = -1000000000000.0f;  // Posição do "far plane"
-
-        if (g_UsePerspectiveProjection) {
-            float field_of_view = 3.141592f / 3.0f;
-            projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
-        }
+        if (g_projectionType == perspective)
+            projection = Matrix_Perspective(glm::radians(field_of_view), g_ScreenRatio, -nearplane, -farplane);
         else {
             float t = 1.5f*g_CameraDistance/2.5f;
             float b = -t;
             float r = t*g_ScreenRatio;
             float l = -r;
-            projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
+            projection = Matrix_Orthographic(l, r, b, t, -nearplane, -farplane);
         }
 
         glUniformMatrix4fv(glGetUniformLocation(program, "model")      , 1 , GL_FALSE , glm::value_ptr(model));
         glUniformMatrix4fv(glGetUniformLocation(program, "view")       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(program, "projection") , 1 , GL_FALSE , glm::value_ptr(projection));
-        glUniform3fv(glGetUniformLocation(program, "color")            , 1            , glm::value_ptr(g_color));
+        glUniform3fv(glGetUniformLocation(program, "color")            , 1            , color);
         glUniform1i(glGetUniformLocation(program, "useColor")          ,                g_useColor);
 
         glBindVertexArray(VAOs[Triangles]);
@@ -210,13 +224,78 @@ int main( int argc, char** argv )
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
 
-        if (g_windingOrder) glFrontFace(GL_CW);
+        if (g_windingOrder == cw) glFrontFace(GL_CW);
         else glFrontFace(GL_CCW);
 
         if(g_backFaceCulling) glEnable(GL_CULL_FACE); 
         else glDisable(GL_CULL_FACE);
 
         glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+
+        // Start the Dear ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::Begin("Object Properties");
+        {
+            if (ImGui::BeginTabBar("tabs", 0))
+            {
+                if (ImGui::BeginTabItem("Render"))
+                {
+                    ImGui::SeparatorText("Render Type");
+                    ImGui::RadioButton("Triangles", &g_chosenType, triangle); ImGui::SameLine();
+                    ImGui::RadioButton("Lines", &g_chosenType, line); ImGui::SameLine();
+                    ImGui::RadioButton("Points", &g_chosenType, point);
+
+                    ImGui::SeparatorText("Back Face Culling");
+                    ImGui::Checkbox("##", &g_backFaceCulling); ImGui::SameLine();
+                    ImGui::RadioButton("CW", &g_windingOrder, cw); ImGui::SameLine();
+                    ImGui::RadioButton("CCW", &g_windingOrder, ccw);
+
+                    ImGui::SeparatorText("Color");
+                    ImGui::Checkbox("##", &g_useColor); ImGui::SameLine();
+                    ImGui::ColorEdit3("##", color);
+
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Camera"))
+                {
+                    ImGui::SeparatorText("Camera Style");
+                    ImGui::RadioButton("LookAt", &g_cStyle, cLookAt); ImGui::SameLine();
+                    ImGui::RadioButton("Free", &g_cStyle, cFree);
+
+                    ImGui::SeparatorText("Projection Style");
+                    ImGui::RadioButton("Perspective", &g_projectionType, perspective); ImGui::SameLine();
+                    ImGui::RadioButton("Ortographic", &g_projectionType, ortographic);
+
+                    ImGui::SeparatorText("Projection Parameters");
+                    ImGui::DragFloat("Far Plane"   , &farplane        , 1.0f , std::max(nearplane, 1.0f), std::numeric_limits<float>::max());
+                    ImGui::DragFloat("Near Plane"  , &nearplane       , 0.01f,           0.01f          , farplane);
+                    if(g_projectionType == perspective)
+                        ImGui::DragFloat("FOV"     , &field_of_view   , 1.0f ,           5.0f           , 120.0f);
+                    else
+                        ImGui::DragFloat("Distance", &g_CameraDistance, 1.0f ,           1.0f           , std::numeric_limits<float>::max());
+
+                    ImGui::SeparatorText("Reset Camera Position");
+                    if (ImGui::Button("Reset")){
+                        camera_position_c = g_cameraInitialPosition;
+                        camera_view_vector = normalize(camera_lookat_l - camera_position_c);
+                    } 
+
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Camera"))
+                {
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
+            }
+        }
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -234,30 +313,23 @@ void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
     g_ScreenRatio = (float)width / height;
 }
 
-// Função callback chamada sempre que o usuário aperta algum dos botões do mouse
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
 
 }
 
-// Função callback chamada sempre que o usuário movimentar o cursor do mouse em
-// cima da janela OpenGL.
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 {
-    // Deslocamento do cursor do mouse em x e y de coordenadas de tela!
     float dx = xpos - g_LastCursorPosX;
     float dy = ypos - g_LastCursorPosY;
 
-    // Atualizamos as variáveis globais para armazenar a posição atual do
-    // cursor como sendo a última posição conhecida do cursor.
     g_LastCursorPosX = xpos;
     g_LastCursorPosY = ypos;
 }
 
-// Função callback chamada sempre que o usuário movimenta a "rodinha" do mouse.
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    g_CameraDistance -= 0.1f*yoffset;
+    g_CameraDistance -= yoffset;
 
     const float verysmallnumber = std::numeric_limits<float>::epsilon();
     if (g_CameraDistance < verysmallnumber)
@@ -266,15 +338,14 @@ void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
 {
-    // Se o usuário pressionar a tecla ESC, fechamos a janela.
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
 
     if (key == GLFW_KEY_P && action == GLFW_PRESS)
-        g_UsePerspectiveProjection = !g_UsePerspectiveProjection;
+        g_projectionType = g_projectionType == perspective ? ortographic : perspective;
 
     if (key == GLFW_KEY_C && action == GLFW_PRESS)
-        g_lookAt = !g_lookAt;
+        g_cStyle = g_cStyle == cLookAt ? cFree : cLookAt;
 
     if (key == GLFW_KEY_O && action == GLFW_PRESS)
         g_windingOrder = !g_windingOrder;
