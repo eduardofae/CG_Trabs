@@ -104,11 +104,11 @@ glm::vec4 rotateCam(glm::vec4 view_vec, glm::vec4 up){
     glm::vec4 up_vec = crossproduct(side_vec, view_vec);
 
 	// ROTAÇÃO VERTICAL
-    glm::vec4 lado = crossproduct(up, view_vec); // Calcula o lado, para rotacionar verticalmente
+    glm::vec4 lado = crossproduct(up_vec, view_vec); // Calcula o lado, para rotacionar verticalmente
     glm::vec4 aux = view_vec * Matrix_Rotate(-g_angles.angleY * cam_look_speed, lado);   // Rotação no eixo lado (vertical)
 
     // TRAVA DA ROTAÇÃO VERTICAL
-    if(dotproduct(lado, crossproduct(up_vec, aux)) > 0) { // Testa se o novo valor de lado é igual ao antigo
+    if(dotproduct(lado, crossproduct(up, aux)) > 0) { // Testa se o novo valor de lado é igual ao antigo
         view_vec = aux;                                   // Caso seja, salva o novo camera_view (permite a rotação)
 	}
     // ROTAÇÃO HORIZONTAL
@@ -211,7 +211,7 @@ int main( int argc, char** argv )
     glm::vec4 camera_view_vector = normalize(camera_lookat_l - camera_position_c);  // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector   = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);               // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
-    bool  g_useColor = true;
+    bool  useColor      = true;
     float color[3]      = { 1.0f, 1.0f, 1.0f }; // Cor sendo usada
     float nearplane     = 0.01f;                // Posição do "near plane"
     float farplane      = 5000.0f;              // Posição do "far plane"
@@ -245,7 +245,7 @@ int main( int argc, char** argv )
         glUniformMatrix4fv(glGetUniformLocation(program, "view")       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(program, "projection") , 1 , GL_FALSE , glm::value_ptr(projection));
         glUniform3fv(glGetUniformLocation(program, "color")            , 1            , color);
-        glUniform1i(glGetUniformLocation(program, "useColor")          ,                g_useColor);
+        glUniform1i(glGetUniformLocation(program, "useColor")          ,                useColor);
 
         glBindVertexArray(VAOs[Triangles]);
 
@@ -270,16 +270,15 @@ int main( int argc, char** argv )
 
         glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
-        // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Object Properties");
+        ImGui::Begin("Scene Properties");
         {
-            if (ImGui::BeginTabBar("tabs", 0))
+            if (ImGui::BeginTabBar("##", 0))
             {
-                if (ImGui::BeginTabItem("Render"))
+                if (ImGui::BeginTabItem("Object"))
                 {
                     ImGui::SeparatorText("Render Type");
                     ImGui::RadioButton("Triangles", &g_renderType, triangle); ImGui::SameLine();
@@ -287,12 +286,12 @@ int main( int argc, char** argv )
                     ImGui::RadioButton("Points", &g_renderType, point);
 
                     ImGui::SeparatorText("Back Face Culling");
-                    ImGui::Checkbox("##", &g_backFaceCulling); ImGui::SameLine();
-                    ImGui::RadioButton("CW", &g_windingOrder, cw); ImGui::SameLine();
+                    ImGui::Checkbox("##bfc" , &g_backFaceCulling); ImGui::SameLine();
+                    ImGui::RadioButton("CW" , &g_windingOrder, cw); ImGui::SameLine();
                     ImGui::RadioButton("CCW", &g_windingOrder, ccw);
 
                     ImGui::SeparatorText("Color");
-                    ImGui::Checkbox("##", &g_useColor); ImGui::SameLine();
+                    ImGui::Checkbox("##c" , &useColor); ImGui::SameLine();
                     ImGui::ColorEdit3("##", color);
 
                     ImGui::EndTabItem();
@@ -301,7 +300,7 @@ int main( int argc, char** argv )
                 {
                     ImGui::SeparatorText("Camera Style");
                     ImGui::RadioButton("LookAt", &g_camStyle, camLookAt); ImGui::SameLine();
-                    ImGui::RadioButton("Free", &g_camStyle, camFree);
+                    ImGui::RadioButton("Free"  , &g_camStyle, camFree);
 
                     ImGui::SeparatorText("Projection Style");
                     ImGui::RadioButton("Perspective", &g_projectionType, perspective); ImGui::SameLine();
@@ -324,10 +323,6 @@ int main( int argc, char** argv )
                         camera_view_vector = normalize(camera_lookat_l - camera_position_c);
                     } 
 
-                    ImGui::EndTabItem();
-                }
-                if (ImGui::BeginTabItem("Camera"))
-                {
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();
@@ -362,9 +357,9 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         g_rotateCam = false;
         return;
     }
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
         g_rotateCam = true;
-    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+    if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
         g_rotateCam = false;
 }
 
