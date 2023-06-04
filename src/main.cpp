@@ -270,14 +270,17 @@ int main( int argc, char** argv )
                     ImGui::RadioButton("Ortographic", &g_projectionType, ortographic);
 
                     ImGui::SeparatorText("Projection Parameters");
-                    ImGui::DragFloat("Far Plane"   , &farplane        , 1.0f , std::max(nearplane, 1.0f), std::numeric_limits<float>::max());
-                    ImGui::DragFloat("Near Plane"  , &nearplane       , 0.01f,           0.01f          , farplane);
+                    ImGui::DragFloat("Far"         , &farplane        , 1.0f , std::max(nearplane, 1.0f), std::numeric_limits<float>::max());
+                    ImGui::DragFloat("Near"        , &nearplane       , 0.01f,           0.01f          , farplane);
                     if(g_projectionType == perspective)
                         ImGui::DragFloat("FOV"     , &field_of_view   , 1.0f ,           5.0f           , 120.0f);
                     else
                         ImGui::DragFloat("Distance", &g_CameraDistance, 1.0f ,           1.0f           , std::numeric_limits<float>::max());
 
-                    ImGui::SeparatorText("Reset Camera Position");
+                    ImGui::SeparatorText("Camera Position");
+                    ImGui::DragFloat("X", &camera_position_c.x, 1.0f , -std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+                    ImGui::DragFloat("Y", &camera_position_c.y, 1.0f,  -std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+                    ImGui::DragFloat("Z", &camera_position_c.z, 1.0f , -std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
                     if (ImGui::Button("Reset")){
                         camera_position_c = g_cameraInitialPosition;
                         camera_view_vector = normalize(camera_lookat_l - camera_position_c);
@@ -315,7 +318,7 @@ void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
-
+    
 }
 
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
