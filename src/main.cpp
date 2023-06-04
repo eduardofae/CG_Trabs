@@ -31,7 +31,7 @@ enum Buffer_IDs { ArrayBuffer, NormalBuffer, ColorBuffer, NumBuffers };
 enum Attrib_IDs { vPosition = 0, vNormal = 1, vColor = 2 };
 enum rType      { point = 0, line = 1, triangle = 2 };
 enum orders     { cw = 0, ccw = 1 };
-enum cStyle     { cLookAt = 0, cFree = 1 };
+enum cStyle     { camLookAt = 0, camFree = 1 };
 enum pType      { perspective = 0, ortographic = 1 };
 
 GLuint VAOs[NumVAOs];
@@ -40,20 +40,31 @@ GLuint Buffers[NumBuffers];
 float  g_ScreenRatio = 1.0f;
 float  g_CameraDistance = 1000.0f;
 int    g_projectionType = perspective;
-int    g_cStyle = cLookAt;
+int    g_camStyle = camLookAt;
 bool   g_reset = false;
 int    g_windingOrder = cw;
 bool   g_backFaceCulling = true;
-int    g_chosenType = triangle;
+int    g_renderType = triangle;
 double g_LastCursorPosX, g_LastCursorPosY;
+bool   g_rotateCam = false;
 
 glm::vec4 g_cameraInitialPosition = glm::vec4(100.0f, 200.0f, 1000.0f, 1.0f);
 
-typedef struct PressedKeys{
+typedef struct {
 		bool w, a, s, d, space, shift;
 } PressedKeys;
 
+typedef struct {
+		int height, width;
+} WindowSize;
+
+typedef struct {
+		float angleX, angleY;
+} Angles;
+
 PressedKeys g_keys{false, false, false, false, false, false};
+WindowSize g_windowSize{800, 600};
+Angles g_angles{0.0f, 0.0f};
 
 // Funções callback para comunicação com o sistema operacional e interação do
 // usuário. Veja mais comentários nas definições das mesmas, abaixo.
@@ -64,7 +75,7 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
 glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up, glm::vec4 camera_pos){
-    float delta = 50.0f;
+    float delta = 30.0f;
     glm::vec4 side_vec = crossproduct(view_vec, up);
     glm::vec4 up_vec = crossproduct(side_vec, view_vec);
     if(g_keys.w)
@@ -84,6 +95,31 @@ glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up, glm::vec4 camera_pos){
     return camera_pos;
 }
 
+glm::vec4 rotateCam(glm::vec4 view_vec, glm::vec4 up){
+    if(g_angles.angleX == 0 && g_angles.angleY == 0) return view_vec;
+
+    float cam_look_speed = 0.3f;
+
+    glm::vec4 side_vec = crossproduct(view_vec, up);
+    glm::vec4 up_vec = crossproduct(side_vec, view_vec);
+
+	// ROTAÇÃO VERTICAL
+    glm::vec4 lado = crossproduct(up, view_vec); // Calcula o lado, para rotacionar verticalmente
+    glm::vec4 aux = view_vec * Matrix_Rotate(-g_angles.angleY * cam_look_speed, lado);   // Rotação no eixo lado (vertical)
+
+    // TRAVA DA ROTAÇÃO VERTICAL
+    if(dotproduct(lado, crossproduct(up_vec, aux)) > 0) { // Testa se o novo valor de lado é igual ao antigo
+        view_vec = aux;                                   // Caso seja, salva o novo camera_view (permite a rotação)
+	}
+    // ROTAÇÃO HORIZONTAL
+    view_vec = view_vec * Matrix_Rotate(g_angles.angleX * cam_look_speed, up_vec); // Rotação no eixo up (horizontal)
+
+	g_angles.angleX = 0.0f;
+	g_angles.angleY = 0.0f;
+
+    return view_vec;
+}
+
 int main( int argc, char** argv )
 {
     glfwInit();
@@ -96,7 +132,7 @@ int main( int argc, char** argv )
     glfwSetScrollCallback(window, ScrollCallback);
 
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
-    glfwSetWindowSize(window, 800, 600); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
+    glfwSetWindowSize(window, g_windowSize.height, g_windowSize.width); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
 
     glfwMakeContextCurrent(window);
     gl3wInit();
@@ -188,8 +224,10 @@ int main( int argc, char** argv )
 
         camera_position_c  = moveCam(camera_view_vector, camera_up_vector, camera_position_c);
         
-        if(g_cStyle == cLookAt)
+        if(g_camStyle == camLookAt)
             camera_view_vector = normalize(camera_lookat_l - camera_position_c);
+        else
+            camera_view_vector = rotateCam(camera_view_vector, camera_up_vector);
         
         view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
@@ -211,7 +249,7 @@ int main( int argc, char** argv )
 
         glBindVertexArray(VAOs[Triangles]);
 
-        switch (g_chosenType){
+        switch (g_renderType){
             case point:
                 glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
                 break;
@@ -244,9 +282,9 @@ int main( int argc, char** argv )
                 if (ImGui::BeginTabItem("Render"))
                 {
                     ImGui::SeparatorText("Render Type");
-                    ImGui::RadioButton("Triangles", &g_chosenType, triangle); ImGui::SameLine();
-                    ImGui::RadioButton("Lines", &g_chosenType, line); ImGui::SameLine();
-                    ImGui::RadioButton("Points", &g_chosenType, point);
+                    ImGui::RadioButton("Triangles", &g_renderType, triangle); ImGui::SameLine();
+                    ImGui::RadioButton("Lines", &g_renderType, line); ImGui::SameLine();
+                    ImGui::RadioButton("Points", &g_renderType, point);
 
                     ImGui::SeparatorText("Back Face Culling");
                     ImGui::Checkbox("##", &g_backFaceCulling); ImGui::SameLine();
@@ -262,8 +300,8 @@ int main( int argc, char** argv )
                 if (ImGui::BeginTabItem("Camera"))
                 {
                     ImGui::SeparatorText("Camera Style");
-                    ImGui::RadioButton("LookAt", &g_cStyle, cLookAt); ImGui::SameLine();
-                    ImGui::RadioButton("Free", &g_cStyle, cFree);
+                    ImGui::RadioButton("LookAt", &g_camStyle, camLookAt); ImGui::SameLine();
+                    ImGui::RadioButton("Free", &g_camStyle, camFree);
 
                     ImGui::SeparatorText("Projection Style");
                     ImGui::RadioButton("Perspective", &g_projectionType, perspective); ImGui::SameLine();
@@ -313,21 +351,35 @@ void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
 
+    g_windowSize.width  = width;
+    g_windowSize.height = height;
     g_ScreenRatio = (float)width / height;
 }
 
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
-    
+    if(!(g_camStyle == camFree)){
+        g_rotateCam = false;
+        return;
+    }
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+        g_rotateCam = true;
+    if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+        g_rotateCam = false;
 }
 
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 {
     float dx = xpos - g_LastCursorPosX;
     float dy = ypos - g_LastCursorPosY;
-
     g_LastCursorPosX = xpos;
     g_LastCursorPosY = ypos;
+
+    if(!g_rotateCam) return;
+
+    float PI = 3.1415;
+    g_angles.angleX = dx/(g_windowSize.width/2)  * 2*PI; // Calcula o ângulo rotação horizontal de acordo com a porcentagem da tela movida (máximo = 2*PI)
+    g_angles.angleY = dy/(g_windowSize.height/2) * 2*PI; // Calcula o ângulo rotação  vertical  de acordo com a porcentagem da tela movida (máximo = 2*PI)
 }
 
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
@@ -348,7 +400,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         g_projectionType = g_projectionType == perspective ? ortographic : perspective;
 
     if (key == GLFW_KEY_C && action == GLFW_PRESS)
-        g_cStyle = g_cStyle == cLookAt ? cFree : cLookAt;
+        g_camStyle = g_camStyle == camLookAt ? camFree : camLookAt;
 
     if (key == GLFW_KEY_O && action == GLFW_PRESS)
         g_windingOrder = !g_windingOrder;
@@ -357,7 +409,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         g_backFaceCulling = !g_backFaceCulling;
 
     if (key == GLFW_KEY_E && action == GLFW_PRESS)
-        g_chosenType = g_chosenType == triangle ? point : g_chosenType+1;
+        g_renderType = g_renderType == triangle ? point : g_renderType+1;
     
     if (key == GLFW_KEY_R && action == GLFW_PRESS)
         g_reset = true;
