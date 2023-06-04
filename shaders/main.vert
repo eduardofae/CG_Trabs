@@ -7,6 +7,8 @@ layout( location = 2 ) in vec3 vColor;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform vec3 color;
+uniform bool useColor;
 
 out vec4 inColor;
 
@@ -14,7 +16,9 @@ void main()
 {
     vec4 pos = vec4(vPosition, 1.0f);
 
-    inColor.rgb = vColor;
+    if(useColor) inColor.rgb = color;
+    else inColor.rgb = vColor;
+    
     inColor.w = 1.0f;
 
     gl_Position = projection * view * model * pos;

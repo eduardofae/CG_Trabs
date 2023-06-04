@@ -6,6 +6,7 @@
 
 #include <GL3/gl3.h>
 #include <GL3/gl3w.h>
+#include <imgui/imgui.h>
 
 #include <GLFW/glfw3.h>
 #include <cstdlib>
@@ -42,6 +43,7 @@ bool   g_backFaceCulling = true;
 int    g_chosenType = triangle;
 double g_LastCursorPosX, g_LastCursorPosY;
 
+glm::vec3 g_color = glm::vec3(1.0f, 1.0f, 1.0f);
 glm::vec4 g_cameraInitialPosition = glm::vec4(100.0f, 200.0f, 1000.0f, 1.0f);
 
 typedef struct PressedKeys{
@@ -151,9 +153,6 @@ int main( int argc, char** argv )
         GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vColor);
 
-    GLint model_uniform      = glGetUniformLocation(program, "model");      // Variável da matriz "model"
-    GLint view_uniform       = glGetUniformLocation(program, "view");       // Variável da matriz "view" em shader_vertex.glsl
-    GLint projection_uniform = glGetUniformLocation(program, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
     glm::mat4 view;
     glm::mat4 projection;
     glm::mat4 model = Matrix_Scale(1, 1, 1) * Matrix_Translate(-Obj.center.x, -Obj.center.y, -Obj.center.z);
@@ -166,6 +165,7 @@ int main( int argc, char** argv )
     while (!glfwWindowShouldClose(window))
     {
         static const float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        glClearBufferfv(GL_COLOR, 0, black);
 
         camera_position_c  = moveCam(camera_view_vector, camera_up_vector, camera_position_c);
         
@@ -189,11 +189,11 @@ int main( int argc, char** argv )
             projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
         }
 
-        glUniformMatrix4fv(model_uniform      , 1 , GL_FALSE , glm::value_ptr(model));
-        glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
-        glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
-
-        glClearBufferfv(GL_COLOR, 0, black);
+        glUniformMatrix4fv(glGetUniformLocation(program, "model")      , 1 , GL_FALSE , glm::value_ptr(model));
+        glUniformMatrix4fv(glGetUniformLocation(program, "view")       , 1 , GL_FALSE , glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(program, "projection") , 1 , GL_FALSE , glm::value_ptr(projection));
+        glUniform3fv(glGetUniformLocation(program, "color")            , 1            , glm::value_ptr(g_color));
+        glUniform1i(glGetUniformLocation(program, "useColor")          ,                g_useColor);
 
         glBindVertexArray(VAOs[Triangles]);
 
