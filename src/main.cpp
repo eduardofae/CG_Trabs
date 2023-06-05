@@ -48,7 +48,7 @@ int    g_renderType = triangle;
 double g_LastCursorPosX, g_LastCursorPosY;
 bool   g_rotateCam = false;
 
-glm::vec4 g_cameraInitialPosition = glm::vec4(100.0f, 200.0f, 1000.0f, 1.0f);
+glm::vec4 g_cameraInitialPosition = glm::vec4(0.0f, 1000.0f, 1500.0f, 1.0f);
 
 typedef struct {
 		bool w, a, s, d, space, shift;
@@ -156,6 +156,7 @@ int main( int argc, char** argv )
 
     GLuint program = LoadShaders(shaders);
     glUseProgram(program);
+    glEnable(GL_DEPTH_TEST);
 
     glGenVertexArrays(NumVAOs, VAOs);
     glBindVertexArray(VAOs[Triangles]);
@@ -221,6 +222,7 @@ int main( int argc, char** argv )
     {
         static const float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
         glClearBufferfv(GL_COLOR, 0, black);
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
         camera_position_c  = moveCam(camera_view_vector, camera_up_vector, camera_position_c);
         
@@ -276,7 +278,7 @@ int main( int argc, char** argv )
 
         ImGui::Begin("Scene Properties");
         {
-            if (ImGui::BeginTabBar("##", 0))
+            if (ImGui::BeginTabBar("##tab", 0))
             {
                 if (ImGui::BeginTabItem("Object"))
                 {
@@ -291,8 +293,8 @@ int main( int argc, char** argv )
                     ImGui::RadioButton("CCW", &g_windingOrder, ccw);
 
                     ImGui::SeparatorText("Color");
-                    ImGui::Checkbox("##c" , &useColor); ImGui::SameLine();
-                    ImGui::ColorEdit3("##", color);
+                    ImGui::Checkbox("##ccb" , &useColor); ImGui::SameLine();
+                    ImGui::ColorEdit3("##cw", color);
 
                     ImGui::EndTabItem();
                 }
