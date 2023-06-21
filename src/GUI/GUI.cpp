@@ -27,16 +27,12 @@ void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bo
     {
         if (ImGui::BeginTabBar("##tab", 0))
         {
-            if (ImGui::BeginTabItem("Rendering"))
+            if (ImGui::BeginTabItem("Object"))
             {
                 ImGui::SeparatorText("Mash Type");
                 ImGui::RadioButton("Triangles", g_mashType, triangle); ImGui::SameLine();
                 ImGui::RadioButton("Lines", g_mashType, line); ImGui::SameLine();
                 ImGui::RadioButton("Points", g_mashType, point);
-
-                ImGui::SeparatorText("Render Type");
-                ImGui::RadioButton("OpenGL", g_renderType, openGL); ImGui::SameLine();
-                ImGui::RadioButton("CloseToGL", g_renderType, closeGL);
 
                 ImGui::SeparatorText("Back Face Culling");
                 ImGui::Checkbox("##bfc" , g_backFaceCulling); ImGui::SameLine();
@@ -48,7 +44,6 @@ void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bo
                 ImGui::ColorEdit3("##cw", color);
                 
                 ImGui::AlignTextToFramePadding();
-                ImGui::Text("Average FPS: %.2f (%.2f ms/frame)", delta_time * 1000.0f, 1.0f / delta_time);
 
                 ImGui::EndTabItem();
             }
@@ -77,13 +72,24 @@ void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bo
                 if (ImGui::Button("Reset")){
                     *camera_position_c = g_cameraInitialPosition;
                     *camera_view_vector = normalize(camera_lookat_l - *camera_position_c);
-                } 
-
+                }
                 ImGui::EndTabItem();
             }
-                ImGui::EndTabBar();
+            if (ImGui::BeginTabItem("Render"))
+            {
+                ImGui::SeparatorText("Render Type");
+                ImGui::RadioButton("OpenGL", g_renderType, openGL); ImGui::SameLine();
+                ImGui::RadioButton("CloseToGL", g_renderType, closeGL);
+
+                ImGui::EndTabItem();
+            }   
+            ImGui::EndTabBar();
         }
     }
+    ImGui::End();
+
+    ImGui::Begin("Average FPS");
+        ImGui::Text("%.2f FPS",  1.0f / delta_time);
     ImGui::End();
 
     ImGui::Render();
