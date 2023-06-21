@@ -24,10 +24,7 @@
 #include "./GUI/GUI.hpp"
 #include "./camera/camera.hpp"
 #include "./render/openGL.hpp"
-
-enum VAO_IDs    { Triangles, NumVAOs };
-enum Buffer_IDs { ArrayBuffer, NormalBuffer, ColorBuffer, NumBuffers };
-enum Attrib_IDs { vPosition = 0, vNormal = 1, vColor = 2 };
+#include "./render/closeGL.hpp"
 
 GLuint VAOs[NumVAOs];
 GLuint Buffers[NumBuffers];
@@ -39,9 +36,10 @@ int    g_camStyle = camLookAt;
 bool   g_reset = false;
 int    g_windingOrder = cw;
 bool   g_backFaceCulling = true;
-int    g_renderType = triangle;
+int    g_mashType = triangle;
 double g_LastCursorPosX, g_LastCursorPosY;
 bool   g_rotateCam = false;
+int    g_renderType = openGL;
 
 typedef struct {
 	int height, width;
@@ -79,19 +77,23 @@ int main( int argc, char** argv )
 
     startGUI(window);
 
-    ShaderInfo  shaders[] =
+    ShaderInfo  openShaders[] =
     {
         { GL_VERTEX_SHADER,   "../shaders/openGL.vert" },
         { GL_FRAGMENT_SHADER, "../shaders/openGL.frag" },
         { GL_NONE, NULL }
     };
 
-    GLuint program = LoadShaders(shaders);
-    glUseProgram(program);
-    glEnable(GL_DEPTH_TEST);
+    ShaderInfo  closeToShaders[] =
+    {
+        { GL_VERTEX_SHADER,   "../shaders/closeGL.vert" },
+        { GL_FRAGMENT_SHADER, "../shaders/closeGL.frag" },
+        { GL_NONE, NULL }
+    };  
 
-    glGenVertexArrays(NumVAOs, VAOs);
-    glBindVertexArray(VAOs[Triangles]);
+    GLuint openProgram = LoadShaders(openShaders);
+    GLuint closeToProgram = LoadShaders(closeToShaders);
+
     ObjectInfo Obj = ReadObject("../objs/cow.in");
 
     std::vector<GLfloat> vertices;
@@ -113,27 +115,9 @@ int main( int argc, char** argv )
         colors.emplace_back(obj.z);
     }
 
-    glCreateBuffers(NumBuffers, Buffers);
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[ArrayBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, vertices.size()*sizeof(GLfloat), vertices.data(), 0);
-
-    glVertexAttribPointer(vPosition, 3, GL_FLOAT,
-        GL_FALSE, 0, BUFFER_OFFSET(0));
-    glEnableVertexAttribArray(vPosition);
-
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[NormalBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, normals.size()*sizeof(GLfloat), normals.data(), 0);
-
-    glVertexAttribPointer(vNormal, 3, GL_FLOAT,
-        GL_FALSE, 0, BUFFER_OFFSET(0));
-    glEnableVertexAttribArray(vNormal);
-
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[ColorBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, colors.size()*sizeof(GLfloat), colors.data(), 0);
-
-    glVertexAttribPointer(vColor, 3, GL_FLOAT,
-        GL_FALSE, 0, BUFFER_OFFSET(0));
-    glEnableVertexAttribArray(vColor);
+    glEnable(GL_DEPTH_TEST);
+    glGenVertexArrays(NumVAOs, VAOs);
+    buildOpenGL(VAOs, Buffers, vertices, normals, colors);
 
     glm::mat4 view;
     glm::mat4 projection;
@@ -149,10 +133,15 @@ int main( int argc, char** argv )
     float nearplane     = 0.01f;                // Posição do "near plane"
     float farplane      = 5000.0f;              // Posição do "far plane"
     float field_of_view = 60.0f;                // Campo de visão
+    float last_time     = 0.0f;
 
     while (!glfwWindowShouldClose(window))
     {
-        camera_position_c  = moveCam(camera_view_vector, camera_up_vector, camera_position_c, g_keys, g_reset, g_cameraInitialPosition);
+        float time      = (float) glfwGetTime();
+        float delta_time = time - last_time;
+        last_time       = time;
+
+        camera_position_c  = moveCam(camera_view_vector, camera_up_vector, camera_position_c, g_keys, g_reset, g_cameraInitialPosition, delta_time);
         
         if(g_camStyle == camLookAt)
             camera_view_vector = normalize(camera_lookat_l - camera_position_c);
@@ -170,14 +159,18 @@ int main( int argc, char** argv )
             float l = -r;
             projection = Matrix_Orthographic(l, r, b, t, -nearplane, -farplane);
         }
+        
+        if(g_renderType == openGL)
+            renderOpenGL(openProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, vertices.size());
+        else
+            renderCloseGL(closeToProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, Buffers, vertices, normals, colors);
 
-        renderOpenGL(program, model, view, projection, color, useColor, VAOs, Triangles, g_renderType, g_windingOrder, g_backFaceCulling, vertices.size());
-
-        renderGUI(&g_renderType, &g_backFaceCulling, &g_windingOrder, &useColor,
+        renderGUI(&g_mashType, &g_backFaceCulling, &g_windingOrder, &useColor,
                color, &g_camStyle, &g_projectionType, &farplane, &nearplane,
                &field_of_view, &g_CameraDistance,
                &camera_position_c, g_cameraInitialPosition,
-               &camera_view_vector, camera_lookat_l);
+               &camera_view_vector, camera_lookat_l,
+               &g_renderType, delta_time);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -250,7 +243,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         g_backFaceCulling = !g_backFaceCulling;
 
     if (key == GLFW_KEY_E && action == GLFW_PRESS)
-        g_renderType = g_renderType == triangle ? point : g_renderType+1;
+        g_mashType = g_mashType == triangle ? point : g_mashType+1;
     
     if (key == GLFW_KEY_R && action == GLFW_PRESS)
         g_reset = true;

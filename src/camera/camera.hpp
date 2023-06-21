@@ -13,5 +13,5 @@ typedef struct {
 	float angleX, angleY;
 } Angles;
 
-glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up, glm::vec4 camera_pos, PressedKeys g_keys, bool g_reset, glm::vec4 g_cameraInitialPosition);
+glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up, glm::vec4 camera_pos, PressedKeys g_keys, bool g_reset, glm::vec4 g_cameraInitialPosition, float delta_time);
 glm::vec4 rotateCam(glm::vec4 view_vec, glm::vec4 up, Angles *g_angles);

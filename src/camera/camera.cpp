@@ -1,21 +1,21 @@
 #include "camera.hpp"
 
-glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up, glm::vec4 camera_pos, PressedKeys g_keys, bool g_reset, glm::vec4 g_cameraInitialPosition){
-    float delta = 30.0f;
+glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up, glm::vec4 camera_pos, PressedKeys g_keys, bool g_reset, glm::vec4 g_cameraInitialPosition, float delta_time){
+    float delta = 500.0f;
     glm::vec4 side_vec = crossproduct(view_vec, up);
     glm::vec4 up_vec = crossproduct(side_vec, view_vec);
     if(g_keys.w)
-        camera_pos += delta * view_vec;
+        camera_pos += delta * delta_time * view_vec;
     if(g_keys.s)
-        camera_pos -= delta * view_vec;
+        camera_pos -= delta * delta_time * view_vec;
     if(g_keys.d)
-        camera_pos += delta * side_vec;
+        camera_pos += delta * delta_time * side_vec;
     if(g_keys.a)
-        camera_pos -= delta * side_vec;
+        camera_pos -= delta * delta_time * side_vec;
     if(g_keys.space)
-        camera_pos += delta * up_vec;
+        camera_pos += delta * delta_time * up_vec;
     if(g_keys.shift)
-        camera_pos -= delta * up_vec;
+        camera_pos -= delta * delta_time * up_vec;
     if(g_reset)
         camera_pos = g_cameraInitialPosition;
     return camera_pos;

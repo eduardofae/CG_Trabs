@@ -12,11 +12,12 @@ void startGUI(GLFWwindow* window) {
     ImGui_ImplOpenGL3_Init("#version 330");
 }
 
-void renderGUI(int *g_renderType, bool *g_backFaceCulling, int *g_windingOrder, bool *useColor,
+void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bool *useColor,
                float *color, int *g_camStyle, int *g_projectionType, float *farplane, float *nearplane,
                float *field_of_view, float *g_CameraDistance,
                glm::vec4 *camera_position_c, glm::vec4 g_cameraInitialPosition,
-               glm::vec4 *camera_view_vector, glm::vec4 camera_lookat_l)
+               glm::vec4 *camera_view_vector, glm::vec4 camera_lookat_l,
+               int *g_renderType, float delta_time)
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -26,12 +27,16 @@ void renderGUI(int *g_renderType, bool *g_backFaceCulling, int *g_windingOrder, 
     {
         if (ImGui::BeginTabBar("##tab", 0))
         {
-            if (ImGui::BeginTabItem("Object"))
+            if (ImGui::BeginTabItem("Rendering"))
             {
+                ImGui::SeparatorText("Mash Type");
+                ImGui::RadioButton("Triangles", g_mashType, triangle); ImGui::SameLine();
+                ImGui::RadioButton("Lines", g_mashType, line); ImGui::SameLine();
+                ImGui::RadioButton("Points", g_mashType, point);
+
                 ImGui::SeparatorText("Render Type");
-                ImGui::RadioButton("Triangles", g_renderType, triangle); ImGui::SameLine();
-                ImGui::RadioButton("Lines", g_renderType, line); ImGui::SameLine();
-                ImGui::RadioButton("Points", g_renderType, point);
+                ImGui::RadioButton("OpenGL", g_renderType, openGL); ImGui::SameLine();
+                ImGui::RadioButton("CloseToGL", g_renderType, closeGL);
 
                 ImGui::SeparatorText("Back Face Culling");
                 ImGui::Checkbox("##bfc" , g_backFaceCulling); ImGui::SameLine();
@@ -41,6 +46,9 @@ void renderGUI(int *g_renderType, bool *g_backFaceCulling, int *g_windingOrder, 
                 ImGui::SeparatorText("Color");
                 ImGui::Checkbox("##ccb" , useColor); ImGui::SameLine();
                 ImGui::ColorEdit3("##cw", color);
+                
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text("Average FPS: %.2f (%.2f ms/frame)", delta_time * 1000.0f, 1.0f / delta_time);
 
                 ImGui::EndTabItem();
             }
@@ -74,10 +82,10 @@ void renderGUI(int *g_renderType, bool *g_backFaceCulling, int *g_windingOrder, 
                 ImGui::EndTabItem();
             }
                 ImGui::EndTabBar();
-            }
         }
-        ImGui::End();
+    }
+    ImGui::End();
 
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

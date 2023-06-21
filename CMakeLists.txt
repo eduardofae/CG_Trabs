@@ -33,7 +33,7 @@ set(COMMON_LIBS ${COMMON_LIBS} ${EXTRA_LIBS})
 
 set(RUN_DIR ${PROJECT_SOURCE_DIR}/bin)
 
-add_executable(${PROJECT_NAME} src/main.cpp lib/gl3w.c shaders/openGL.vert shaders/openGL.frag src/loader/loader.cpp src/GUI/GUI.cpp src/utils/matrices.cpp src/utils/printMatrices.cpp src/camera/camera.cpp src/render/openGL.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp lib/gl3w.c shaders/openGL.vert shaders/openGL.frag src/loader/loader.cpp src/GUI/GUI.cpp src/utils/matrices.cpp src/utils/printMatrices.cpp src/camera/camera.cpp src/render/openGL.cpp src/render/closeGL.cpp)
 set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _d)
 target_link_libraries(${PROJECT_NAME} ${COMMON_LIBS})
 add_subdirectory("${EXT_DIR}/glfw")
