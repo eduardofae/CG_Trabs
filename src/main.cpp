@@ -20,8 +20,10 @@
 
 #include "./utils/matrices.hpp"
 #include "./utils/printMatrices.hpp"
-#include "./render/render.hpp"
+#include "./loader/loader.hpp"
 #include "./GUI/GUI.hpp"
+#include "./camera/camera.hpp"
+#include "./render/openGL.hpp"
 
 enum VAO_IDs    { Triangles, NumVAOs };
 enum Buffer_IDs { ArrayBuffer, NormalBuffer, ColorBuffer, NumBuffers };
@@ -41,20 +43,11 @@ int    g_renderType = triangle;
 double g_LastCursorPosX, g_LastCursorPosY;
 bool   g_rotateCam = false;
 
-glm::vec4 g_cameraInitialPosition = glm::vec4(0.0f, 1000.0f, 1500.0f, 1.0f);
-
 typedef struct {
-		bool w, a, s, d, space, shift;
-} PressedKeys;
-
-typedef struct {
-		int height, width;
+	int height, width;
 } WindowSize;
 
-typedef struct {
-		float angleX, angleY;
-} Angles;
-
+glm::vec4 g_cameraInitialPosition = glm::vec4(0.0f, 1000.0f, 1500.0f, 1.0f);
 PressedKeys g_keys{false, false, false, false, false, false};
 WindowSize g_windowSize{800, 600};
 Angles g_angles{0.0f, 0.0f};
@@ -66,52 +59,6 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-
-glm::vec4 moveCam(glm::vec4 view_vec, glm::vec4 up, glm::vec4 camera_pos){
-    float delta = 30.0f;
-    glm::vec4 side_vec = crossproduct(view_vec, up);
-    glm::vec4 up_vec = crossproduct(side_vec, view_vec);
-    if(g_keys.w)
-        camera_pos += delta * view_vec;
-    if(g_keys.s)
-        camera_pos -= delta * view_vec;
-    if(g_keys.d)
-        camera_pos += delta * side_vec;
-    if(g_keys.a)
-        camera_pos -= delta * side_vec;
-    if(g_keys.space)
-        camera_pos += delta * up_vec;
-    if(g_keys.shift)
-        camera_pos -= delta * up_vec;
-    if(g_reset)
-        camera_pos = g_cameraInitialPosition;
-    return camera_pos;
-}
-
-glm::vec4 rotateCam(glm::vec4 view_vec, glm::vec4 up){
-    if(g_angles.angleX == 0 && g_angles.angleY == 0) return view_vec;
-
-    float cam_look_speed = 0.3f;
-
-    glm::vec4 side_vec = crossproduct(view_vec, up);
-    glm::vec4 up_vec = crossproduct(side_vec, view_vec);
-
-	// ROTAÇÃO VERTICAL
-    glm::vec4 lado = crossproduct(up_vec, view_vec); // Calcula o lado, para rotacionar verticalmente
-    glm::vec4 aux = view_vec * Matrix_Rotate(-g_angles.angleY * cam_look_speed, lado);   // Rotação no eixo lado (vertical)
-
-    // TRAVA DA ROTAÇÃO VERTICAL
-    if(dotproduct(lado, crossproduct(up, aux)) > 0) { // Testa se o novo valor de lado é igual ao antigo
-        view_vec = aux;                                   // Caso seja, salva o novo camera_view (permite a rotação)
-	}
-    // ROTAÇÃO HORIZONTAL
-    view_vec = view_vec * Matrix_Rotate(g_angles.angleX * cam_look_speed, up_vec); // Rotação no eixo up (horizontal)
-
-	g_angles.angleX = 0.0f;
-	g_angles.angleY = 0.0f;
-
-    return view_vec;
-}
 
 int main( int argc, char** argv )
 {
@@ -134,8 +81,8 @@ int main( int argc, char** argv )
 
     ShaderInfo  shaders[] =
     {
-        { GL_VERTEX_SHADER,   "../shaders/main.vert" },
-        { GL_FRAGMENT_SHADER, "../shaders/main.frag" },
+        { GL_VERTEX_SHADER,   "../shaders/openGL.vert" },
+        { GL_FRAGMENT_SHADER, "../shaders/openGL.frag" },
         { GL_NONE, NULL }
     };
 
@@ -205,16 +152,12 @@ int main( int argc, char** argv )
 
     while (!glfwWindowShouldClose(window))
     {
-        static const float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-        glClearBufferfv(GL_COLOR, 0, black);
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
-        camera_position_c  = moveCam(camera_view_vector, camera_up_vector, camera_position_c);
+        camera_position_c  = moveCam(camera_view_vector, camera_up_vector, camera_position_c, g_keys, g_reset, g_cameraInitialPosition);
         
         if(g_camStyle == camLookAt)
             camera_view_vector = normalize(camera_lookat_l - camera_position_c);
         else
-            camera_view_vector = rotateCam(camera_view_vector, camera_up_vector);
+            camera_view_vector = rotateCam(camera_view_vector, camera_up_vector, &g_angles);
         
         view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
@@ -228,34 +171,7 @@ int main( int argc, char** argv )
             projection = Matrix_Orthographic(l, r, b, t, -nearplane, -farplane);
         }
 
-        glUniformMatrix4fv(glGetUniformLocation(program, "model")      , 1 , GL_FALSE , glm::value_ptr(model));
-        glUniformMatrix4fv(glGetUniformLocation(program, "view")       , 1 , GL_FALSE , glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(program, "projection") , 1 , GL_FALSE , glm::value_ptr(projection));
-        glUniform3fv(glGetUniformLocation(program, "color")            , 1            , color);
-        glUniform1i(glGetUniformLocation(program, "useColor")          ,                useColor);
-
-        glBindVertexArray(VAOs[Triangles]);
-
-        switch (g_renderType){
-            case point:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
-                break;
-
-            case line:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-                break;
-
-            case triangle:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        }
-
-        if (g_windingOrder == cw) glFrontFace(GL_CW);
-        else glFrontFace(GL_CCW);
-
-        if(g_backFaceCulling) glEnable(GL_CULL_FACE); 
-        else glDisable(GL_CULL_FACE);
-
-        glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+        renderOpenGL(program, model, view, projection, color, useColor, VAOs, Triangles, g_renderType, g_windingOrder, g_backFaceCulling, vertices.size());
 
         renderGUI(&g_renderType, &g_backFaceCulling, &g_windingOrder, &useColor,
                color, &g_camStyle, &g_projectionType, &farplane, &nearplane,

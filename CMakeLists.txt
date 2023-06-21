@@ -33,9 +33,9 @@ set(COMMON_LIBS ${COMMON_LIBS} ${EXTRA_LIBS})
 
 set(RUN_DIR ${PROJECT_SOURCE_DIR}/bin)
 
-add_executable(CG_TRABS src/main.cpp lib/gl3w.c shaders/main.vert shaders/main.frag shaders/triangles.vert shaders/triangles.frag src/render/render.cpp src/GUI/GUI.cpp src/utils/matrices.cpp src/utils/printMatrices.cpp)
-set_property(TARGET CG_TRABS PROPERTY DEBUG_POSTFIX _d)
-target_link_libraries(CG_TRABS ${COMMON_LIBS})
+add_executable(${PROJECT_NAME} src/main.cpp lib/gl3w.c shaders/openGL.vert shaders/openGL.frag src/loader/loader.cpp src/GUI/GUI.cpp src/utils/matrices.cpp src/utils/printMatrices.cpp src/camera/camera.cpp src/render/openGL.cpp)
+set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _d)
+target_link_libraries(${PROJECT_NAME} ${COMMON_LIBS})
 add_subdirectory("${EXT_DIR}/glfw")
 add_library(imgui ${IMGUI_DIR}/imgui.h ${IMGUI_DIR}/imgui.cpp ${IMGUI_DIR}/imgui_draw.cpp ${IMGUI_DIR}/imgui_widgets.cpp ${IMGUI_DIR}/imgui_tables.cpp ${IMGUI_DIR}/imgui_demo.cpp ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp ${EXT_DIR}/glfw)
 include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends)

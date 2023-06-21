@@ -1,4 +1,4 @@
-#include "render.hpp"
+#include "loader.hpp"
 
 static const GLchar* ReadShader(const char* filename)
 {
@@ -162,5 +162,3 @@ ObjectInfo ReadObject(char *FileName)
 
     return Obj;
 } 
-
-
