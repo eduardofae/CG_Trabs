@@ -7,9 +7,6 @@
 #include <GL3/gl3.h>
 #include <GL3/gl3w.h>
 #include <GLFW/glfw3.h>
-#include <imgui.h>
-#include <imgui_impl_opengl3.h>
-#include <imgui_impl_glfw.h>
 
 #include <cstdlib>
 #include <iostream>
@@ -24,15 +21,11 @@
 #include "./utils/matrices.hpp"
 #include "./utils/printMatrices.hpp"
 #include "./render/render.hpp"
-#include "./render/cube.hpp"
+#include "./GUI/GUI.hpp"
 
 enum VAO_IDs    { Triangles, NumVAOs };
 enum Buffer_IDs { ArrayBuffer, NormalBuffer, ColorBuffer, NumBuffers };
 enum Attrib_IDs { vPosition = 0, vNormal = 1, vColor = 2 };
-enum rType      { point = 0, line = 1, triangle = 2 };
-enum orders     { cw = 0, ccw = 1 };
-enum cStyle     { camLookAt = 0, camFree = 1 };
-enum pType      { perspective = 0, ortographic = 1 };
 
 GLuint VAOs[NumVAOs];
 GLuint Buffers[NumBuffers];
@@ -137,15 +130,7 @@ int main( int argc, char** argv )
     glfwMakeContextCurrent(window);
     gl3wInit();
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-    ImGui::StyleColorsDark();
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 330");
+    startGUI(window);
 
     ShaderInfo  shaders[] =
     {
@@ -272,68 +257,11 @@ int main( int argc, char** argv )
 
         glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        ImGui::Begin("Scene Properties");
-        {
-            if (ImGui::BeginTabBar("##tab", 0))
-            {
-                if (ImGui::BeginTabItem("Object"))
-                {
-                    ImGui::SeparatorText("Render Type");
-                    ImGui::RadioButton("Triangles", &g_renderType, triangle); ImGui::SameLine();
-                    ImGui::RadioButton("Lines", &g_renderType, line); ImGui::SameLine();
-                    ImGui::RadioButton("Points", &g_renderType, point);
-
-                    ImGui::SeparatorText("Back Face Culling");
-                    ImGui::Checkbox("##bfc" , &g_backFaceCulling); ImGui::SameLine();
-                    ImGui::RadioButton("CW" , &g_windingOrder, cw); ImGui::SameLine();
-                    ImGui::RadioButton("CCW", &g_windingOrder, ccw);
-
-                    ImGui::SeparatorText("Color");
-                    ImGui::Checkbox("##ccb" , &useColor); ImGui::SameLine();
-                    ImGui::ColorEdit3("##cw", color);
-
-                    ImGui::EndTabItem();
-                }
-                if (ImGui::BeginTabItem("Camera"))
-                {
-                    ImGui::SeparatorText("Camera Style");
-                    ImGui::RadioButton("LookAt", &g_camStyle, camLookAt); ImGui::SameLine();
-                    ImGui::RadioButton("Free"  , &g_camStyle, camFree);
-
-                    ImGui::SeparatorText("Projection Style");
-                    ImGui::RadioButton("Perspective", &g_projectionType, perspective); ImGui::SameLine();
-                    ImGui::RadioButton("Ortographic", &g_projectionType, ortographic);
-
-                    ImGui::SeparatorText("Projection Parameters");
-                    ImGui::DragFloat("Far"         , &farplane        , 1.0f , std::max(nearplane, 1.0f), std::numeric_limits<float>::max());
-                    ImGui::DragFloat("Near"        , &nearplane       , 0.01f,           0.01f          , farplane);
-                    if(g_projectionType == perspective)
-                        ImGui::DragFloat("FOV"     , &field_of_view   , 1.0f ,           5.0f           , 120.0f);
-                    else
-                        ImGui::DragFloat("Distance", &g_CameraDistance, 1.0f ,           1.0f           , std::numeric_limits<float>::max());
-
-                    ImGui::SeparatorText("Camera Position");
-                    ImGui::DragFloat("X", &camera_position_c.x, 1.0f , -std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-                    ImGui::DragFloat("Y", &camera_position_c.y, 1.0f,  -std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-                    ImGui::DragFloat("Z", &camera_position_c.z, 1.0f , -std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-                    if (ImGui::Button("Reset")){
-                        camera_position_c = g_cameraInitialPosition;
-                        camera_view_vector = normalize(camera_lookat_l - camera_position_c);
-                    } 
-
-                    ImGui::EndTabItem();
-                }
-                ImGui::EndTabBar();
-            }
-        }
-        ImGui::End();
-
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        renderGUI(&g_renderType, &g_backFaceCulling, &g_windingOrder, &useColor,
+               color, &g_camStyle, &g_projectionType, &farplane, &nearplane,
+               &field_of_view, &g_CameraDistance,
+               &camera_position_c, g_cameraInitialPosition,
+               &camera_view_vector, camera_lookat_l);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
