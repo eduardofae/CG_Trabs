@@ -128,12 +128,15 @@ int main( int argc, char** argv )
     glm::vec4 camera_view_vector = normalize(camera_lookat_l - camera_position_c);  // Vetor "view", sentido para onde a câmera está virada
     glm::vec4 camera_up_vector   = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);               // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
-    bool  useColor      = true;
-    float color[3]      = { 1.0f, 1.0f, 1.0f }; // Cor sendo usada
-    float nearplane     = 0.01f;                // Posição do "near plane"
-    float farplane      = 5000.0f;              // Posição do "far plane"
-    float field_of_view = 60.0f;                // Campo de visão
-    float last_time     = 0.0f;
+    bool  useColor       = true;
+    float color[3]       = { 1.0f, 1.0f, 1.0f }; // Cor sendo usada
+    float nearplane      = 0.01f;                // Posição do "near plane"
+    float farplane       = 5000.0f;              // Posição do "far plane"
+    float field_of_viewV = 60.0f;                // Campo de visão Vertical
+    float field_of_viewH = 60.0f;                // Campo de visão horizontal
+    float last_time      = 0.0f;
+    bool  symmetric      = true;
+
 
     while (!glfwWindowShouldClose(window))
     {
@@ -151,7 +154,12 @@ int main( int argc, char** argv )
         view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
         if (g_projectionType == perspective)
-            projection = Matrix_Perspective(glm::radians(field_of_view), g_ScreenRatio, -nearplane, -farplane);
+        {
+            if(symmetric)
+                projection = Matrix_Perspective(glm::radians(field_of_viewV), g_ScreenRatio, -nearplane, -farplane);
+            else
+                projection = Matrix_Frustum(glm::radians(field_of_viewV), glm::radians(field_of_viewH), -nearplane, -farplane);
+        }
         else {
             float t = 1.5f*g_CameraDistance/2.5f;
             float b = -t;
@@ -167,10 +175,10 @@ int main( int argc, char** argv )
 
         renderGUI(&g_mashType, &g_backFaceCulling, &g_windingOrder, &useColor,
                color, &g_camStyle, &g_projectionType, &farplane, &nearplane,
-               &field_of_view, &g_CameraDistance,
+               &field_of_viewV, &g_CameraDistance,
                &camera_position_c, g_cameraInitialPosition,
                &camera_view_vector, camera_lookat_l,
-               &g_renderType, delta_time);
+               &g_renderType, delta_time, &field_of_viewH, &symmetric);
 
         glfwSwapBuffers(window);
         glfwPollEvents();

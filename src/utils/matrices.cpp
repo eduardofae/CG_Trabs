@@ -232,3 +232,23 @@ glm::mat4 Matrix_Perspective(float field_of_view, float aspect, float n, float f
     
     return -M*P;
 }
+
+// Matriz de projeção perspectiva
+glm::mat4 Matrix_Frustum(float FOVv, float FOVh, float n, float f)
+{
+    float t = fabs(n) * tanf(FOVv / 2.0f);
+    float b = -t;
+    float r = fabs(n) * tanf(FOVh / 2.0f);
+    float l = -r;
+
+    glm::mat4 P = Matrix(
+         n   , 0.0f , 0.0f , 0.0f ,  // LINHA 1
+        0.0f ,  n   , 0.0f , 0.0f ,  // LINHA 2
+        0.0f , 0.0f ,  n+f , -f*n ,  // LINHA 3
+        0.0f , 0.0f , 1.0f , 0.0f    // LINHA 4
+    );
+
+    glm::mat4 M = Matrix_Orthographic(l, r, b, t, n, f);
+    
+    return -M*P;
+}

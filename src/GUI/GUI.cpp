@@ -14,10 +14,11 @@ void startGUI(GLFWwindow* window) {
 
 void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bool *useColor,
                float *color, int *g_camStyle, int *g_projectionType, float *farplane, float *nearplane,
-               float *field_of_view, float *g_CameraDistance,
+               float *field_of_viewV, float *g_CameraDistance,
                glm::vec4 *camera_position_c, glm::vec4 g_cameraInitialPosition,
                glm::vec4 *camera_view_vector, glm::vec4 camera_lookat_l,
-               int *g_renderType, float delta_time)
+               int *g_renderType, float delta_time,
+               float *field_of_viewH, bool *symmetric)
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -60,8 +61,17 @@ void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bo
                 ImGui::SeparatorText("Projection Parameters");
                 ImGui::DragFloat("Far"         , farplane        , 1.0f , std::fmax(*nearplane, 1.0f), std::numeric_limits<float>::max());
                 ImGui::DragFloat("Near"        , nearplane       , 0.01f,            0.01f          , *farplane);
-                if(*g_projectionType == perspective)
-                    ImGui::DragFloat("FOV"     , field_of_view   , 1.0f ,            5.0f           , 120.0f);
+                if(*g_projectionType == perspective){
+                    if(*symmetric){
+                        ImGui::DragFloat("FOV" , field_of_viewV, 1.0f , 5.0f, 120.0f);
+                    }
+                    else{
+                        ImGui::DragFloat("FOVv", field_of_viewV, 1.0f , 5.0f, 120.0f);
+                        ImGui::DragFloat("FOVh", field_of_viewH, 1.0f , 5.0f, 120.0f);
+                    } 
+                    ImGui::Checkbox("Symmetric", symmetric);
+                }
+                    
                 else
                     ImGui::DragFloat("Distance", g_CameraDistance, 1.0f ,            1.0f           , std::numeric_limits<float>::max());
 
