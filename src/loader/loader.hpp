@@ -36,7 +36,7 @@ typedef struct {
     std::vector<glm::vec3> normal;
     std::vector<glm::vec3> face_normal;
     std::vector<int> material_id;
-    std::vector<glm::vec3> color;
+    std::vector<MaterialInfo> materialInfos;
     glm::vec3 center;
 } ObjectInfo;
 

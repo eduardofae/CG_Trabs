@@ -91,8 +91,12 @@ int main( int argc, char** argv )
         { GL_NONE, NULL }
     };  
 
-    GLuint openProgram = LoadShaders(openShaders);
+    GLuint openProgram    = LoadShaders(openShaders);
     GLuint closeToProgram = LoadShaders(closeToShaders);
+    GLuint lightModels[numShadingTypes];
+    lightModels[GouAD]   = glGetSubroutineIndex(openProgram, GL_VERTEX_SHADER, "GAD");
+    lightModels[GouADS]  = glGetSubroutineIndex(openProgram, GL_VERTEX_SHADER, "GADS");
+    lightModels[Phong]   = glGetSubroutineIndex(openProgram, GL_VERTEX_SHADER, "Phong");
 
     ObjectInfo Obj = ReadObject("../objs/cow.in");
 
@@ -108,16 +112,32 @@ int main( int argc, char** argv )
         normals.emplace_back(obj.y);
         normals.emplace_back(obj.z);
     }
-    std::vector<GLfloat> colors;
-    for(auto &obj : Obj.color){
-        colors.emplace_back(obj.x);
-        colors.emplace_back(obj.y);
-        colors.emplace_back(obj.z);
+    std::vector<GLfloat> ambient;
+    for(auto &idx : Obj.material_id){
+        ambient.emplace_back(Obj.materialInfos.at(idx).ambient.x);
+        ambient.emplace_back(Obj.materialInfos.at(idx).ambient.y);
+        ambient.emplace_back(Obj.materialInfos.at(idx).ambient.z);
+    }
+    std::vector<GLfloat> diffuse;
+    for(auto &idx : Obj.material_id){
+        diffuse.emplace_back(Obj.materialInfos.at(idx).diffuse.x);
+        diffuse.emplace_back(Obj.materialInfos.at(idx).diffuse.y);
+        diffuse.emplace_back(Obj.materialInfos.at(idx).diffuse.z);
+    }
+    std::vector<GLfloat> specular;
+    for(auto &idx : Obj.material_id){
+        specular.emplace_back(Obj.materialInfos.at(idx).specular.x);
+        specular.emplace_back(Obj.materialInfos.at(idx).specular.y);
+        specular.emplace_back(Obj.materialInfos.at(idx).specular.z);
+    }
+    std::vector<GLfloat> shine;
+    for(auto &idx : Obj.material_id){
+        shine.emplace_back(Obj.materialInfos.at(idx).shine);
     }
 
     glEnable(GL_DEPTH_TEST);
     glGenVertexArrays(NumVAOs, VAOs);
-    buildOpenGL(VAOs, Buffers, vertices, normals, colors);
+    buildOpenGL(VAOs, Buffers, vertices, normals, ambient, diffuse, specular, shine);
 
     glm::mat4 view;
     glm::mat4 projection;
@@ -136,7 +156,7 @@ int main( int argc, char** argv )
     float field_of_viewH = 60.0f;                // Campo de visão horizontal
     float last_time      = 0.0f;
     bool  symmetric      = true;
-
+    int   shadingType    = GouAD;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -169,16 +189,16 @@ int main( int argc, char** argv )
         }
         
         if(g_renderType == openGL)
-            renderOpenGL(openProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, vertices.size());
+            renderOpenGL(openProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, vertices.size(), shadingType, lightModels);
         else
-            renderCloseGL(closeToProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, Buffers, vertices, normals, colors);
+            renderCloseGL(closeToProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, Buffers, vertices, normals);
 
         renderGUI(&g_mashType, &g_backFaceCulling, &g_windingOrder, &useColor,
                color, &g_camStyle, &g_projectionType, &farplane, &nearplane,
                &field_of_viewV, &g_CameraDistance,
                &camera_position_c, g_cameraInitialPosition,
                &camera_view_vector, camera_lookat_l,
-               &g_renderType, delta_time, &field_of_viewH, &symmetric);
+               &g_renderType, delta_time, &field_of_viewH, &symmetric, &shadingType);
 
         glfwSwapBuffers(window);
         glfwPollEvents();

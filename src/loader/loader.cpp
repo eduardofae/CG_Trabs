@@ -96,7 +96,7 @@ GLuint LoadShaders(ShaderInfo* shaders)
 
 ObjectInfo ReadObject(char *FileName)
 {
-    std::vector<MaterialInfo> material;
+    ObjectInfo Obj;
     int material_count, numTris;
     char ch = 'a';
 
@@ -114,14 +114,14 @@ ObjectInfo ReadObject(char *FileName)
         fscanf(fp, "diffuse color %f %f %f\n" , &(pai.diffuse.x) , &(pai.diffuse.y) , &(pai.diffuse.z));
         fscanf(fp, "specular color %f %f %f\n", &(pai.specular.x), &(pai.specular.y), &(pai.specular.z));
         fscanf(fp, "material shine %f\n", &(pai.shine));
-        material.emplace_back(pai);
+        Obj.materialInfos.emplace_back(pai);
     }
 
     ch = 'b';
     while(ch!= '\n') fscanf(fp, "%c", &ch); // skip documentation line
     
     printf ("Reading in %s (%d triangles). . .\n", FileName, numTris);
-    ObjectInfo Obj;
+    
     glm::vec3 max, min;
 
     for (int i=0; i < numTris * 3; i++) // read triangles
@@ -150,8 +150,6 @@ ObjectInfo ReadObject(char *FileName)
                 &(face_norm.x), &(face_norm.y), &(face_norm.z));
             Obj.face_normal.emplace_back(face_norm);
         }
-
-        Obj.color.emplace_back(1.0f, 0.0f, 0.0f);
     }
 
     fclose(fp);

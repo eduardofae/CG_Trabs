@@ -18,7 +18,7 @@ void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bo
                glm::vec4 *camera_position_c, glm::vec4 g_cameraInitialPosition,
                glm::vec4 *camera_view_vector, glm::vec4 camera_lookat_l,
                int *g_renderType, float delta_time,
-               float *field_of_viewH, bool *symmetric)
+               float *field_of_viewH, bool *symmetric, int *shadingType)
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -88,9 +88,13 @@ void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bo
             if (ImGui::BeginTabItem("Render"))
             {
                 ImGui::SeparatorText("Render Type");
-                ImGui::RadioButton("OpenGL", g_renderType, openGL); ImGui::SameLine();
+                ImGui::RadioButton("OpenGL"   , g_renderType, openGL); ImGui::SameLine();
                 ImGui::RadioButton("CloseToGL", g_renderType, closeGL);
 
+                ImGui::SeparatorText("Shading Type");
+                ImGui::RadioButton("Gouraud AD" , shadingType, GouAD); ImGui::SameLine();
+                ImGui::RadioButton("Gouraud ADS", shadingType, GouADS); ImGui::SameLine();
+                ImGui::RadioButton("Phong"      , shadingType, Phong);
                 ImGui::EndTabItem();
             }   
             ImGui::EndTabBar();

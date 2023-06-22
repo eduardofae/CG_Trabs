@@ -1,11 +1,11 @@
 #include "closeGL.hpp"
 
-int buildCloseGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals, std::vector<GLfloat> colors,
-                  glm::mat4 model, glm::mat4 view, glm::mat4 projection)
+int buildCloseGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals,
+                 glm::mat4 model, glm::mat4 view, glm::mat4 projection)
 {
     glBindVertexArray(VAOs[CloseGL]);
 
-    std::vector<GLfloat> position, finalNormals, finalColors;
+    std::vector<GLfloat> position, finalNormals;
 
     for(int i = 0; i < vertices.size(); i += 9){
         std::array<glm::vec4, 3> points;
@@ -21,10 +21,6 @@ int buildCloseGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, s
                 finalNormals.emplace_back(normals.at(i+3*j));
                 finalNormals.emplace_back(normals.at(i+3*j+1));
                 finalNormals.emplace_back(normals.at(i+3*j+2));
-
-                finalColors.emplace_back(colors.at(i+3*j));
-                finalColors.emplace_back(colors.at(i+3*j+1));
-                finalColors.emplace_back(colors.at(i+3*j+2));
             }
         }
     }
@@ -44,29 +40,25 @@ int buildCloseGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, s
         GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vNormal);
 
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[ColorBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, finalColors.size()*sizeof(GLfloat), finalColors.data(), 0);
-
-    glVertexAttribPointer(vColor, 3, GL_FLOAT,
-        GL_FALSE, 0, BUFFER_OFFSET(0));
-    glEnableVertexAttribArray(vColor);
-
     return position.size();
 }
 
 void renderCloseGL(GLuint program, glm::mat4 model, glm::mat4 view, glm::mat4 projection,
                    float *color, bool useColor, GLuint *VAOs,
                    int g_mashType, int g_windingOrder, int g_backFaceCulling,
-                   GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals, std::vector<GLfloat> colors)
+                   GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals)
 {
     glUseProgram(program);
 
-    int size = buildCloseGL(VAOs, Buffers, vertices, normals, colors, model, view, projection);
+    int size = buildCloseGL(VAOs, Buffers, vertices, normals, model, view, projection);
 
     static const float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
     glClearBufferfv(GL_COLOR, 0, black);
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
+    float vColor[3] = { 1.0f, 1.0f, 1.0f };
+
+    glUniform3fv(glGetUniformLocation(program, "vColor") , 1, vColor);
     glUniform3fv(glGetUniformLocation(program, "color")  , 1, color);
     glUniform1i(glGetUniformLocation(program, "useColor"),    useColor);
 

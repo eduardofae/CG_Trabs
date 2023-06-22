@@ -1,6 +1,8 @@
 #include "openGL.hpp"
 
-void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals, std::vector<GLfloat> colors) {
+void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals,
+                 std::vector<GLfloat> ambient, std::vector<GLfloat> diffuse, std::vector<GLfloat> specular, std::vector<GLfloat> shine)
+{
     glBindVertexArray(VAOs[OpenGL]);
 
     glCreateBuffers(NumBuffers, Buffers);
@@ -18,19 +20,43 @@ void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, s
         GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vNormal);
 
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[ColorBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, colors.size()*sizeof(GLfloat), colors.data(), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[AmbientBuffer]);
+    glBufferStorage(GL_ARRAY_BUFFER, ambient.size()*sizeof(GLfloat), ambient.data(), 0);
 
-    glVertexAttribPointer(vColor, 3, GL_FLOAT,
+    glVertexAttribPointer(vAmbient, 3, GL_FLOAT,
         GL_FALSE, 0, BUFFER_OFFSET(0));
-    glEnableVertexAttribArray(vColor);
+    glEnableVertexAttribArray(vAmbient);
+
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[DiffuseBuffer]);
+    glBufferStorage(GL_ARRAY_BUFFER, diffuse.size()*sizeof(GLfloat), diffuse.data(), 0);
+
+    glVertexAttribPointer(vDiffuse, 3, GL_FLOAT,
+        GL_FALSE, 0, BUFFER_OFFSET(0));
+    glEnableVertexAttribArray(vDiffuse);
+
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[SpecularBuffer]);
+    glBufferStorage(GL_ARRAY_BUFFER, specular.size()*sizeof(GLfloat), specular.data(), 0);
+
+    glVertexAttribPointer(vSpecular, 3, GL_FLOAT,
+        GL_FALSE, 0, BUFFER_OFFSET(0));
+    glEnableVertexAttribArray(vSpecular);
+
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[ShineBuffer]);
+    glBufferStorage(GL_ARRAY_BUFFER, shine.size()*sizeof(GLfloat), shine.data(), 0);
+
+    glVertexAttribPointer(vShine, 3, GL_FLOAT,
+        GL_FALSE, 0, BUFFER_OFFSET(0));
+    glEnableVertexAttribArray(vShine);
 }
 
 void renderOpenGL(GLuint program, glm::mat4 model, glm::mat4 view, glm::mat4 projection,
                   float *color, bool useColor, GLuint *VAOs,
-                  int g_renderType, int g_windingOrder, int g_backFaceCulling, int size)
+                  int g_renderType, int g_windingOrder, int g_backFaceCulling, int size,
+                  int shadingType, GLuint *lightModels)
 {
     glUseProgram(program);
+
+    glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &lightModels[shadingType]);
 
     static const float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
     glClearBufferfv(GL_COLOR, 0, black);
