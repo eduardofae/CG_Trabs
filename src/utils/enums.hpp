@@ -1,38 +1,47 @@
 #pragma once
 
 enum VAO_IDs    { OpenGL, CloseGL, NumVAOs };
-enum Buffer_IDs { ArrayBuffer, NormalBuffer, AmbientBuffer, DiffuseBuffer, SpecularBuffer, ShineBuffer, NumBuffers };
-enum Attrib_IDs { vPosition = 0, vNormal = 1, vAmbient = 2, vDiffuse = 3, vSpecular = 4, vShine = 5 };
+enum Buffer_IDs { ArrayBuffer, NormalBuffer, materialIdBuffer, NumBuffers };
+enum Attrib_IDs { vPosition, vNormal, vMaterialId };
 
 enum oType {
-    point    = 0,
-    line     = 1,
-    triangle = 2
+    point,
+    line,
+    triangle
 };
 
 enum orders {
-    cw  = 0,
-    ccw = 1
+    cw,
+    ccw
 };
 
 enum cStyle {
-    camLookAt = 0,
-    camFree   = 1
+    camLookAt,
+    camFree
 };
 
 enum pType {
-    perspective = 0,
-    ortographic = 1
+    perspective,
+    ortographic
 };
 
 enum rType {
-    openGL  = 0,
-    closeGL = 1
+    openGL,
+    closeGL
 };
 
 enum sType {
-    GouAD  = 0,
-    GouADS = 1,
-    Phong  = 2,
+    GouAD,
+    GouADS,
+    Phong,
+    NoneVert,
+    NoneFrag,
     numShadingTypes
 };
+
+typedef struct {
+    glm::vec3   ambient;
+    glm::vec3   diffuse;
+    glm::vec3   specular;
+    float       shine;
+} MaterialInfo;

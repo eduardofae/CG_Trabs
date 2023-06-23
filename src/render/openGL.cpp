@@ -1,6 +1,6 @@
 #include "openGL.hpp"
 
-void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals,
+void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals, std::vector<GLint> material_id,
                  std::vector<GLfloat> ambient, std::vector<GLfloat> diffuse, std::vector<GLfloat> specular, std::vector<GLfloat> shine)
 {
     glBindVertexArray(VAOs[OpenGL]);
@@ -20,54 +20,59 @@ void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, s
         GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vNormal);
 
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[AmbientBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, ambient.size()*sizeof(GLfloat), ambient.data(), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[materialIdBuffer]);
+    glBufferStorage(GL_ARRAY_BUFFER, material_id.size()*sizeof(GLint), material_id.data(), 0);
 
-    glVertexAttribPointer(vAmbient, 3, GL_FLOAT,
+    glVertexAttribPointer(vMaterialId, 1, GL_INT,
         GL_FALSE, 0, BUFFER_OFFSET(0));
-    glEnableVertexAttribArray(vAmbient);
-
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[DiffuseBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, diffuse.size()*sizeof(GLfloat), diffuse.data(), 0);
-
-    glVertexAttribPointer(vDiffuse, 3, GL_FLOAT,
-        GL_FALSE, 0, BUFFER_OFFSET(0));
-    glEnableVertexAttribArray(vDiffuse);
-
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[SpecularBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, specular.size()*sizeof(GLfloat), specular.data(), 0);
-
-    glVertexAttribPointer(vSpecular, 3, GL_FLOAT,
-        GL_FALSE, 0, BUFFER_OFFSET(0));
-    glEnableVertexAttribArray(vSpecular);
-
-    glBindBuffer(GL_ARRAY_BUFFER, Buffers[ShineBuffer]);
-    glBufferStorage(GL_ARRAY_BUFFER, shine.size()*sizeof(GLfloat), shine.data(), 0);
-
-    glVertexAttribPointer(vShine, 3, GL_FLOAT,
-        GL_FALSE, 0, BUFFER_OFFSET(0));
-    glEnableVertexAttribArray(vShine);
+    glEnableVertexAttribArray(vMaterialId);
 }
 
 void renderOpenGL(GLuint program, glm::mat4 model, glm::mat4 view, glm::mat4 projection,
                   float *color, bool useColor, GLuint *VAOs,
                   int g_renderType, int g_windingOrder, int g_backFaceCulling, int size,
-                  int shadingType, GLuint *lightModels)
+                  int shadingType, GLuint *lightModels, glm::vec4 camera_position,
+                  std::vector <MaterialInfo> materials)
 {
     glUseProgram(program);
 
-    glUniformSubroutinesuiv(GL_VERTEX_SHADER, 1, &lightModels[shadingType]);
+    switch (shadingType)
+    {
+        case GouAD:
+            glUniformSubroutinesuiv(GL_VERTEX_SHADER  , 1, &lightModels[shadingType]);
+            glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &lightModels[NoneFrag]);
+            break;
+        case GouADS:
+            glUniformSubroutinesuiv(GL_VERTEX_SHADER  , 1, &lightModels[shadingType]);
+            glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &lightModels[NoneFrag]);
+            break;
+        case Phong:
+            glUniformSubroutinesuiv(GL_VERTEX_SHADER  , 1, &lightModels[NoneVert]);
+            glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &lightModels[shadingType]);
+            break;
+        default:
+            glUniformSubroutinesuiv(GL_VERTEX_SHADER  , 1, &lightModels[NoneVert]);
+            glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &lightModels[NoneFrag]);
+            break;
+    }
+    
 
     static const float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
     glClearBufferfv(GL_COLOR, 0, black);
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-    glUniformMatrix4fv(glGetUniformLocation(program, "model")      , 1 , GL_FALSE , glm::value_ptr(model));
-    glUniformMatrix4fv(glGetUniformLocation(program, "view")       , 1 , GL_FALSE , glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(program, "projection") , 1 , GL_FALSE , glm::value_ptr(projection));
+    glUniformMatrix4fv(glGetUniformLocation(program, "model")             , 1 , GL_FALSE , glm::value_ptr(model));
+    glUniformMatrix4fv(glGetUniformLocation(program, "view")              , 1 , GL_FALSE , glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(program, "projection")        , 1 , GL_FALSE , glm::value_ptr(projection));
 
-    glUniform3fv(glGetUniformLocation(program, "color")            , 1            , color);
-    glUniform1i(glGetUniformLocation(program, "useColor")          ,                useColor);
+    glUniform4fv(glGetUniformLocation(program, "camera_position")         , 1            , glm::value_ptr(camera_position));
+    glUniform3fv(glGetUniformLocation(program, "materials.ambient")       , 1            , glm::value_ptr(materials[0].ambient));
+    if(useColor)
+        glUniform3fv(glGetUniformLocation(program, "materials.diffuse")   , 1            , color);
+    else
+        glUniform3fv(glGetUniformLocation(program, "materials.diffuse")   , 1            , glm::value_ptr(materials[0].diffuse));
+    glUniform3fv(glGetUniformLocation(program, "materials.specular")      , 1            , glm::value_ptr(materials[0].specular));
+    glUniform1f(glGetUniformLocation(program, "materials.shine")                         , materials[0].shine);
 
     glBindVertexArray(VAOs[OpenGL]);
 

@@ -15,6 +15,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "../utils/printMatrices.hpp"
+#include "../utils/enums.hpp"
 
 #define BUFFER_OFFSET(a) ((void*)(a))
 
@@ -23,13 +24,6 @@ typedef struct {
     const char* filename;
     GLuint       shader;
 } ShaderInfo;
-
-typedef struct {
-    glm::vec3   ambient;
-    glm::vec3   diffuse;
-    glm::vec3   specular;
-    float       shine;
-} MaterialInfo;
 
 typedef struct {
     std::vector<glm::vec3> position;

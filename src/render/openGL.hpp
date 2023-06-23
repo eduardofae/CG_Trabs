@@ -13,9 +13,10 @@
 #define BUFFER_OFFSET(a) ((void*)(a))
 
 
-void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals,
+void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals, std::vector<GLint> material_id,
                  std::vector<GLfloat> ambient, std::vector<GLfloat> diffuse, std::vector<GLfloat> specular, std::vector<GLfloat> shine);
 void renderOpenGL(GLuint program, glm::mat4 model, glm::mat4 view, glm::mat4 projection,
                   float *color, bool useColor, GLuint *VAOs,
                   int g_renderType, int g_windingOrder, int g_backFaceCulling, int size,
-                  int shadingType, GLuint *lightModels);
+                  int shadingType, GLuint *lightModels, glm::vec4 camera_position,
+                  std::vector <MaterialInfo> materials);

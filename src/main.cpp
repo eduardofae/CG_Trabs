@@ -94,9 +94,11 @@ int main( int argc, char** argv )
     GLuint openProgram    = LoadShaders(openShaders);
     GLuint closeToProgram = LoadShaders(closeToShaders);
     GLuint lightModels[numShadingTypes];
-    lightModels[GouAD]   = glGetSubroutineIndex(openProgram, GL_VERTEX_SHADER, "GAD");
-    lightModels[GouADS]  = glGetSubroutineIndex(openProgram, GL_VERTEX_SHADER, "GADS");
-    lightModels[Phong]   = glGetSubroutineIndex(openProgram, GL_VERTEX_SHADER, "Phong");
+    lightModels[GouAD]    = glGetSubroutineIndex(openProgram, GL_VERTEX_SHADER  , "GAD");
+    lightModels[GouADS]   = glGetSubroutineIndex(openProgram, GL_VERTEX_SHADER  , "GADS");
+    lightModels[NoneVert] = glGetSubroutineIndex(openProgram, GL_VERTEX_SHADER  , "None");
+    lightModels[Phong]    = glGetSubroutineIndex(openProgram, GL_FRAGMENT_SHADER, "Phong");
+    lightModels[NoneFrag] = glGetSubroutineIndex(openProgram, GL_FRAGMENT_SHADER, "None");
 
     ObjectInfo Obj = ReadObject("../objs/cow.in");
 
@@ -111,6 +113,10 @@ int main( int argc, char** argv )
         normals.emplace_back(obj.x);
         normals.emplace_back(obj.y);
         normals.emplace_back(obj.z);
+    }
+    std::vector<GLint> material_id;
+    for(auto &mat : Obj.material_id){
+        material_id.emplace_back(mat);
     }
     std::vector<GLfloat> ambient;
     for(auto &idx : Obj.material_id){
@@ -137,7 +143,7 @@ int main( int argc, char** argv )
 
     glEnable(GL_DEPTH_TEST);
     glGenVertexArrays(NumVAOs, VAOs);
-    buildOpenGL(VAOs, Buffers, vertices, normals, ambient, diffuse, specular, shine);
+    buildOpenGL(VAOs, Buffers, vertices, normals, material_id, ambient, diffuse, specular, shine);
 
     glm::mat4 view;
     glm::mat4 projection;
@@ -160,9 +166,9 @@ int main( int argc, char** argv )
 
     while (!glfwWindowShouldClose(window))
     {
-        float time      = (float) glfwGetTime();
+        float time       = (float) glfwGetTime();
         float delta_time = time - last_time;
-        last_time       = time;
+        last_time        = time;
 
         camera_position_c  = moveCam(camera_view_vector, camera_up_vector, camera_position_c, g_keys, g_reset, g_cameraInitialPosition, delta_time);
         
@@ -189,7 +195,7 @@ int main( int argc, char** argv )
         }
         
         if(g_renderType == openGL)
-            renderOpenGL(openProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, vertices.size(), shadingType, lightModels);
+            renderOpenGL(openProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, vertices.size(), shadingType, lightModels, camera_position_c, Obj.materialInfos);
         else
             renderCloseGL(closeToProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, Buffers, vertices, normals);
 
