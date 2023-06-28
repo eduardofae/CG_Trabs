@@ -100,7 +100,7 @@ int main( int argc, char** argv )
     lightModels[Phong]    = glGetSubroutineIndex(openProgram, GL_FRAGMENT_SHADER, "Phong");
     lightModels[NoneFrag] = glGetSubroutineIndex(openProgram, GL_FRAGMENT_SHADER, "None");
 
-    ObjectInfo Obj = ReadObject("../objs/cow.in");
+    ObjectInfo Obj = ReadObject("../objs/character.in");
 
     std::vector<GLfloat> vertices;
     for(auto &obj : Obj.position){
@@ -147,7 +147,7 @@ int main( int argc, char** argv )
 
     glm::mat4 view;
     glm::mat4 projection;
-    glm::mat4 model = Matrix_Scale(1, 1, 1) * Matrix_Translate(-Obj.center.x, -Obj.center.y, -Obj.center.z);
+    glm::mat4 model = Matrix_Scale(10, 10, 10) * Matrix_Translate(-Obj.center.x, -Obj.center.y, -Obj.center.z);
 
     glm::vec4 camera_position_c  = g_cameraInitialPosition;                         // Ponto "c", centro da câmera
     glm::vec4 camera_lookat_l    = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);               // Ponto "l", para onde a câmera (look-at) estará sempre olhando

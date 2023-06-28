@@ -28,7 +28,7 @@ out vec4 inNormal;
 out vec4 inCam;
 
 subroutine (Shading) vec3 GAD(vec4 p, vec4 n, vec4 cam, MaterialInfo mat){
-    vec4 l  = normalize(cam - p);
+    vec4 l  = vec4(normalize(cam - p).rgb, 0.00);
     vec3 I  = vec3(1.0, 1.0, 1.0);
     vec3 Ia = vec3(0.2, 0.2, 0.2);
 
@@ -61,12 +61,11 @@ void main()
 {
     inPosition = model * vec4(vPosition, 1.0f);
 
-    inNormal = vec4((transpose(inverse(model)) * vec4(vNormal, 0.0f)).rgb, 0.0f);
+    inNormal = vec4(normalize((transpose(inverse(model)) * vec4(vNormal, 0.0f)).xyz), 0.0f);
 
     inCam = camera_position;
 
     inColor = lightModels(inPosition, inNormal, inCam, materials);
-    //inColor = inNormal.rgb;
 
     gl_Position = projection * view * inPosition;
 }
