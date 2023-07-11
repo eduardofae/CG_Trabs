@@ -12,7 +12,7 @@ subroutine uniform Shading lightModels;
 
 layout( location = 0 ) in vec3  vPosition;
 layout( location = 1 ) in vec3  vNormal;
-layout( location = 2 ) in vec3  vMaterialId;
+layout( location = 2 ) in int   vMaterialId;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -20,12 +20,14 @@ uniform mat4 projection;
 
 uniform vec4 camera_position;
 
-uniform MaterialInfo materials;
+uniform MaterialInfo materials[];
 
 out vec3 inColor;
 out vec4 inPosition;
 out vec4 inNormal;
 out vec4 inCam;
+
+out MaterialInfo inMat;
 
 subroutine (Shading) vec3 GAD(vec4 p, vec4 n, vec4 cam, MaterialInfo mat){
     vec4 l  = vec4(normalize(cam - p).rgb, 0.00);
@@ -60,12 +62,11 @@ subroutine (Shading) vec3 None(vec4 p, vec4 n, vec4 cam, MaterialInfo mat){
 void main()
 {
     inPosition = model * vec4(vPosition, 1.0f);
-
     inNormal = vec4(normalize((transpose(inverse(model)) * vec4(vNormal, 0.0f)).xyz), 0.0f);
-
     inCam = camera_position;
-
-    inColor = lightModels(inPosition, inNormal, inCam, materials);
+    inMat = materials[vMaterialId];
+    
+    inColor = lightModels(inPosition, inNormal, inCam, inMat);
 
     gl_Position = projection * view * inPosition;
 }

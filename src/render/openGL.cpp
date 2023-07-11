@@ -1,7 +1,6 @@
 #include "openGL.hpp"
 
-void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals, std::vector<GLint> material_id,
-                 std::vector<GLfloat> ambient, std::vector<GLfloat> diffuse, std::vector<GLfloat> specular, std::vector<GLfloat> shine)
+void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals, std::vector<GLint> material_id)
 {
     glBindVertexArray(VAOs[OpenGL]);
 
@@ -66,14 +65,18 @@ void renderOpenGL(GLuint program, glm::mat4 model, glm::mat4 view, glm::mat4 pro
     glUniformMatrix4fv(glGetUniformLocation(program, "projection")        , 1 , GL_FALSE , glm::value_ptr(projection));
 
     glUniform4fv(glGetUniformLocation(program, "camera_position")         , 1            , glm::value_ptr(camera_position));
-    glUniform3fv(glGetUniformLocation(program, "materials.ambient")       , 1            , glm::value_ptr(materials[0].ambient));
-    if(useColor)
-        glUniform3fv(glGetUniformLocation(program, "materials.diffuse")   , 1            , color);
-    else
-        glUniform3fv(glGetUniformLocation(program, "materials.diffuse")   , 1            , glm::value_ptr(materials[0].diffuse));
-    glUniform3fv(glGetUniformLocation(program, "materials.specular")      , 1            , glm::value_ptr(materials[0].specular));
-    glUniform1f(glGetUniformLocation(program, "materials.shine")                         , materials[0].shine);
 
+    for(int i = 0; i < materials.size(); i++){
+        std::string mat = "materials[" + std::to_string(i) + "].";
+        glUniform3fv(glGetUniformLocation(program, (mat + "ambient").data())       , 1            , glm::value_ptr(materials[i].ambient));
+        if(useColor)
+            glUniform3fv(glGetUniformLocation(program, (mat + "diffuse").data())   , 1            , color);
+        else
+            glUniform3fv(glGetUniformLocation(program, (mat + "diffuse").data())   , 1            , glm::value_ptr(materials[i].diffuse));
+        glUniform3fv(glGetUniformLocation(program, (mat + "specular").data())      , 1            , glm::value_ptr(materials[i].specular));
+        glUniform1f(glGetUniformLocation(program, (mat + "shine").data())                         , materials[i].shine);
+    };
+    
     glBindVertexArray(VAOs[OpenGL]);
 
     switch (g_renderType){

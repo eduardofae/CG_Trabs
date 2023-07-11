@@ -15,13 +15,11 @@ in vec4 inPosition;
 in vec4 inNormal;
 in vec4 inCam;
 
+in MaterialInfo inMat;
+
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-
-uniform vec4 camera_position;
-
-uniform MaterialInfo materials;
 
 out vec4 color;
 
@@ -46,6 +44,6 @@ subroutine (Shading) vec3 None(vec4 p, vec4 n, vec4 cam, MaterialInfo mat){
 
 void main()
 {
-    color.rgb = lightModels(inPosition, inNormal, inCam, materials);
+    color.rgb = lightModels(inPosition, inNormal, inCam, inMat);
     color.a = 1;
 }
