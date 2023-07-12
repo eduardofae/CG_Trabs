@@ -1,8 +1,8 @@
 #pragma once
 
 enum VAO_IDs    { OpenGL, CloseGL, NumVAOs };
-enum Buffer_IDs { ArrayBuffer, NormalBuffer, materialIdBuffer, NumBuffers };
-enum Attrib_IDs { vPosition, vNormal, vMaterialId };
+enum Buffer_IDs { ArrayBuffer, NormalBuffer, materialIdBuffer, TextureBuffer, NumBuffers };
+enum Attrib_IDs { vPosition, vNormal, vMaterialId, vTexture };
 
 enum oType {
     point,
@@ -45,3 +45,7 @@ typedef struct {
     glm::vec3   specular;
     float       shine;
 } MaterialInfo;
+
+typedef struct {
+	int height, width;
+} WindowSize;

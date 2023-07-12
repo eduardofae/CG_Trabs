@@ -41,10 +41,6 @@ double g_LastCursorPosX, g_LastCursorPosY;
 bool   g_rotateCam = false;
 int    g_renderType = openGL;
 
-typedef struct {
-	int height, width;
-} WindowSize;
-
 glm::vec4 g_cameraInitialPosition = glm::vec4(0.0f, 1000.0f, 1500.0f, 1.0f);
 PressedKeys g_keys{false, false, false, false, false, false};
 WindowSize g_windowSize{800, 600};
@@ -123,6 +119,9 @@ int main( int argc, char** argv )
     glGenVertexArrays(NumVAOs, VAOs);
     buildOpenGL(VAOs, Buffers, vertices, normals, material_id);
 
+    CloseToGL cgl;
+    cgl.buildCloseGL(VAOs, Buffers);
+
     glm::mat4 view;
     glm::mat4 projection;
     glm::mat4 model = Matrix_Scale(1, 1, 1) * Matrix_Translate(-Obj.center.x, -Obj.center.y, -Obj.center.z);
@@ -173,9 +172,13 @@ int main( int argc, char** argv )
         }
         
         if(g_renderType == openGL)
-            renderOpenGL(openProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, vertices.size(), shadingType, lightModels, camera_position_c, Obj.materialInfos);
+            renderOpenGL(openProgram, model, view, projection, color, useColor,
+            VAOs, g_mashType, g_windingOrder, g_backFaceCulling, vertices.size(),
+            shadingType, lightModels, camera_position_c, Obj.materialInfos);
         else
-            renderCloseGL(closeToProgram, model, view, projection, color, useColor, VAOs, g_mashType, g_windingOrder, g_backFaceCulling, Buffers, vertices, normals);
+            cgl.renderCloseGL(closeToProgram, model, view, projection, color, useColor,
+            VAOs, g_mashType, g_windingOrder, g_backFaceCulling, Buffers, Obj.position, Obj.normal, Obj.material_id,
+            shadingType, camera_position_c, Obj.materialInfos, g_windowSize);
 
         renderGUI(&g_mashType, &g_backFaceCulling, &g_windingOrder, &useColor,
                color, &g_camStyle, &g_projectionType, &farplane, &nearplane,
