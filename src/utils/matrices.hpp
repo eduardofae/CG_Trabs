@@ -27,4 +27,4 @@ glm::mat4 Matrix_Camera_View(glm::vec4 position_c, glm::vec4 view_vector, glm::v
 glm::mat4 Matrix_Orthographic(float l, float r, float b, float t, float n, float f);
 glm::mat4 Matrix_Perspective(float field_of_view, float aspect, float n, float f);
 glm::mat4 Matrix_Frustum(float FOVv, float FOVh, float n, float f);
-glm::mat4 Matrix_View_Port(int width, int height);
+glm::mat4 Matrix_View_Port(float width, float height);

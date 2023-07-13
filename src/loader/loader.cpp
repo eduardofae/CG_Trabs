@@ -24,13 +24,13 @@ static const GLchar* ReadShader(const char* filename)
 }
 
 
-GLuint LoadShaders(ShaderInfo* shaders)
+GLuint LoadShaders(ShaderLocation* shaders)
 {
     if (shaders == NULL) { return 0; }
 
     GLuint program = glCreateProgram();
 
-    ShaderInfo* entry = shaders;
+    ShaderLocation* entry = shaders;
     while (entry->type != GL_NONE) {
         GLuint shader = glCreateShader(entry->type);
 

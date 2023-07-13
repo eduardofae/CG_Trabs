@@ -27,7 +27,7 @@ void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, s
     glEnableVertexAttribArray(vMaterialId);
 }
 
-void renderOpenGL(GLuint program, glm::mat4 model, glm::mat4 view, glm::mat4 projection,
+void renderOpenGL(GLuint program, Matrices matrices,
                   float *color, bool useColor, GLuint *VAOs,
                   int g_mashType, int g_windingOrder, int g_backFaceCulling, int size,
                   int shadingType, GLuint *lightModels, glm::vec4 camera_position,
@@ -54,15 +54,10 @@ void renderOpenGL(GLuint program, glm::mat4 model, glm::mat4 view, glm::mat4 pro
             glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &lightModels[NoneFrag]);
             break;
     }
-    
 
-    static const float black[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    glClearBufferfv(GL_COLOR, 0, black);
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
-    glUniformMatrix4fv(glGetUniformLocation(program, "model")             , 1 , GL_FALSE , glm::value_ptr(model));
-    glUniformMatrix4fv(glGetUniformLocation(program, "view")              , 1 , GL_FALSE , glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(program, "projection")        , 1 , GL_FALSE , glm::value_ptr(projection));
+    glUniformMatrix4fv(glGetUniformLocation(program, "model")             , 1 , GL_FALSE , glm::value_ptr(matrices.model));
+    glUniformMatrix4fv(glGetUniformLocation(program, "view")              , 1 , GL_FALSE , glm::value_ptr(matrices.view));
+    glUniformMatrix4fv(glGetUniformLocation(program, "projection")        , 1 , GL_FALSE , glm::value_ptr(matrices.proj));
 
     glUniform4fv(glGetUniformLocation(program, "camera_position")         , 1            , glm::value_ptr(camera_position));
 

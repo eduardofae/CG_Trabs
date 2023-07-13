@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 
 enum VAO_IDs    { OpenGL, CloseGL, NumVAOs };
 enum Buffer_IDs { ArrayBuffer, NormalBuffer, materialIdBuffer, TextureBuffer, NumBuffers };
@@ -49,3 +50,18 @@ typedef struct {
 typedef struct {
 	int height, width;
 } WindowSize;
+
+typedef struct {
+    std::vector<glm::vec3> position;
+    std::vector<glm::vec3> normal;
+    std::vector<glm::vec3> face_normal;
+    std::vector<int> material_id;
+    std::vector<MaterialInfo> materialInfos;
+    glm::vec3 center;
+} ObjectInfo;
+
+typedef struct {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+} Matrices;

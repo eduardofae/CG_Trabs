@@ -20,7 +20,7 @@ uniform mat4 projection;
 
 uniform vec4 camera_position;
 
-uniform MaterialInfo materials[];
+uniform MaterialInfo materials[50];
 
 out vec3 inColor;
 out vec4 inPosition;

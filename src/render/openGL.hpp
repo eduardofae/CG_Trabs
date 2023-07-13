@@ -15,7 +15,7 @@
 
 
 void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals, std::vector<GLint> material_id);
-void renderOpenGL(GLuint program, glm::mat4 model, glm::mat4 view, glm::mat4 projection,
+void renderOpenGL(GLuint program, Matrices matrices,
                   float *color, bool useColor, GLuint *VAOs,
                   int g_mashType, int g_windingOrder, int g_backFaceCulling, int size,
                   int shadingType, GLuint *lightModels, glm::vec4 camera_position,

@@ -91,13 +91,12 @@ void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bo
                 ImGui::RadioButton("OpenGL"   , g_renderType, openGL); ImGui::SameLine();
                 ImGui::RadioButton("CloseToGL", g_renderType, closeGL);
 
-                if(*g_renderType == openGL){
-                    ImGui::SeparatorText("Shading Type");
-                    ImGui::RadioButton("Gouraud AD" , shadingType, GouAD);
-                    ImGui::RadioButton("Gouraud ADS", shadingType, GouADS);
-                    ImGui::RadioButton("Phong"      , shadingType, Phong);
-                    ImGui::RadioButton("None"       , shadingType, NoneVert);
-                }
+                ImGui::SeparatorText("Shading Type");
+                ImGui::RadioButton("Gouraud AD" , shadingType, GouAD);
+                ImGui::RadioButton("Gouraud ADS", shadingType, GouADS);
+                ImGui::RadioButton("Phong"      , shadingType, Phong);
+                ImGui::RadioButton("None"       , shadingType, NoneVert);
+                
                 ImGui::EndTabItem();
             }   
             ImGui::EndTabBar();
