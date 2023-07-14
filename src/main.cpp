@@ -39,7 +39,7 @@ bool   g_backFaceCulling = true;
 int    g_mashType = triangle;
 double g_LastCursorPosX, g_LastCursorPosY;
 bool   g_rotateCam = false;
-int    g_renderType = openGL;
+int    g_renderType = closeGL;
 
 glm::vec4 g_cameraInitialPosition = glm::vec4(0.0f, 1000.0f, 1500.0f, 1.0f);
 PressedKeys g_keys{false, false, false, false, false, false};
@@ -68,11 +68,9 @@ int main( int argc, char** argv )
     glfwSetScrollCallback(window, ScrollCallback);
 
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
-    glfwSetWindowSize(window, g_windowSize.height, g_windowSize.width); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
+    glfwSetWindowSize(window, g_windowSize.width, g_windowSize.height); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
 
     glfwSwapInterval(0);
-
-    cgl.updateWindowSize(g_windowSize);
 
     glfwMakeContextCurrent(window);
     gl3wInit();
@@ -125,6 +123,7 @@ int main( int argc, char** argv )
     glGenVertexArrays(NumVAOs, VAOs);
     buildOpenGL(VAOs, Buffers, vertices, normals, material_id);
     cgl.buildCloseGL(VAOs, Buffers);
+    cgl.updateWindowSize(g_windowSize);
 
     Matrices matrices;
     matrices.model = Matrix_Scale(1, 1, 1) * Matrix_Translate(-Obj.center.x, -Obj.center.y, -Obj.center.z);
@@ -177,6 +176,8 @@ int main( int argc, char** argv )
             float l = -r;
             matrices.proj = Matrix_Orthographic(l, r, b, t, -nearplane, -farplane);
         }
+
+        matrices.invModelView = glm::transpose(glm::inverse(matrices.model) * glm::inverse(matrices.view));
         
         if(g_renderType == openGL)
             renderOpenGL(openProgram, matrices, color, useColor,
@@ -188,11 +189,11 @@ int main( int argc, char** argv )
             shadingType, camera_position_c);
 
         renderGUI(&g_mashType, &g_backFaceCulling, &g_windingOrder, &useColor,
-               color, &g_camStyle, &g_projectionType, &farplane, &nearplane,
-               &field_of_viewV, &g_CameraDistance,
-               &camera_position_c, g_cameraInitialPosition,
-               &camera_view_vector, camera_lookat_l,
-               &g_renderType, delta_time, &field_of_viewH, &symmetric, &shadingType);
+                  color, &g_camStyle, &g_projectionType, &farplane, &nearplane,
+                  &field_of_viewV, &g_CameraDistance,
+                  &camera_position_c, g_cameraInitialPosition,
+                  &camera_view_vector, camera_lookat_l,
+                  &g_renderType, delta_time, &field_of_viewH, &symmetric, &shadingType);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -212,7 +213,6 @@ void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
     g_ScreenRatio = (float)width / height;
     
     cgl.updateWindowSize(g_windowSize);
-    cgl.buildCloseGL(VAOs, Buffers);
 }
 
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)

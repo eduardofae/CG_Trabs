@@ -255,9 +255,9 @@ glm::mat4 Matrix_Frustum(float FOVv, float FOVh, float n, float f)
 
 glm::mat4 Matrix_View_Port(float width, float height){
     return Matrix(
-        width/2,    0  , 0, width/2  , // LINHA 1
-           0   , height, 0, height/2 , // LINHA 2
-           0   ,    0  , 1,    0     , // LINHA 3
-           0   ,    0  , 0,    1       // LINHA 4
+        width/2,    0    , 0, width/2  , // LINHA 1
+           0   , height/2, 0, height/2 , // LINHA 2
+           0   ,    0    , 1,    0     , // LINHA 3
+           0   ,    0    , 0,    1       // LINHA 4
     );
 }

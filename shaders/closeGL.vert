@@ -3,12 +3,10 @@
 layout( location = 0 ) in vec2 vPosition;
 layout( location = 3 ) in vec2 vTexture;
 
-uniform sampler2D text;
-
-out vec4 inColor;
+out vec2 text_pos;
 
 void main()
 {
-    inColor = texture(text, vTexture);
-    gl_Position = vec4(vPosition, 1.0f, 1.0f);
+    text_pos = vTexture;
+    gl_Position = vec4(vPosition, 0.0f, 1.0f);
 }
