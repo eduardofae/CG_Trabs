@@ -91,7 +91,7 @@ class CloseToGL{
         auto interpolate(PointInfo top, PointInfo bot, float t) -> PointInfo;
         auto fillBuffers(Pixel p, int x, int y, float z) -> void;
         auto backFaceCulling(ObjectInfo Obj, Matrices matrices, CullingInfo cullingInfo) -> void;
-        auto frustrumCulling(ObjectInfo Obj, Matrices matrices, int i) -> void;
+        auto frustrumCulling(ObjectInfo Obj, std::array<PointInfo, 3> vertices, Matrices matrices, int i) -> void;
         auto linkTexture(GLuint program) -> void;
         auto setShaderInfo(ObjectInfo Obj, float *color, bool useColor,
                            int shadingType, glm::vec4 camera_position) -> void;

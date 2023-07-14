@@ -77,14 +77,16 @@ void CloseToGL::linkTexture(GLuint program)
 void CloseToGL::backFaceCulling(ObjectInfo Obj, Matrices matrices, CullingInfo cullingInfo)
 {
     const int size = Obj.position.size();
-    glm::vec4 edge1, edge2, view, norm;
+    glm::vec3 edge1, edge2, view, norm,
+              cam = glm::vec3(shader.camera_position);
+    std::array<PointInfo, 3> vertices;
     for(int i = 0; i < size; i += 3){
         bool valid = true;
 
         if(cullingInfo.backFaceCulling){
-            edge1 = glm::vec4(Obj.position.at(i+1) - Obj.position.at(i), 0.0f);
-            edge2 = glm::vec4(Obj.position.at(i+2) - Obj.position.at(i), 0.0f);
-            view  = glm::vec4(Obj.position.at(i), 1.0f) - shader.camera_position;
+            edge1 = Obj.position.at(i+1) - Obj.position.at(i);
+            edge2 = Obj.position.at(i+2) - Obj.position.at(i);
+            view  = Obj.position.at(i)   - cam;
             switch(cullingInfo.windingOrder){
                 case cw : 
                     norm = crossproduct(edge1, edge2);
@@ -100,36 +102,33 @@ void CloseToGL::backFaceCulling(ObjectInfo Obj, Matrices matrices, CullingInfo c
         }
 
         if(valid)
-            frustrumCulling(Obj, matrices, i);
+            frustrumCulling(Obj, vertices, matrices, i);
     }
 }
 
-void CloseToGL::frustrumCulling(ObjectInfo Obj, Matrices matrices, int i)
+void CloseToGL::frustrumCulling(ObjectInfo Obj, std::array<PointInfo, 3> vertices, Matrices matrices, int i)
 {
-    std::array<PointInfo, 3> vertices;
-    std::array<glm::vec4, 3> pos;
     for(int j = 0; j < 3; j++){
-        pos[j] = matrices.view * matrices.model * glm::vec4(Obj.position.at(i+j), 1.0f);
-        vertices[j].pos = pos.at(j);
-        pos[j] = matrices.proj * pos.at(j);
+        vertices[j].pos = matrices.view * matrices.model * glm::vec4(Obj.position.at(i+j), 1.0f);
+        vertices[j].pixel_pos = matrices.proj * vertices.at(j).pos;
     }   
     
     bool valid = false;
-    if(pos.at(0).w != 0 && pos.at(1).w != 0 && pos.at(2).w != 0){
+    if(vertices.at(0).pixel_pos.w != 0 && vertices.at(1).pixel_pos.w != 0 && vertices.at(2).pixel_pos.w != 0){
         valid = true;
         glm::vec4 p;
         for(int j = 0; j < 3 && valid; j++){
-            p = pos.at(j) / pos.at(j).w;
+            p = vertices.at(j).pixel_pos / vertices.at(j).pixel_pos.w;
             if(p.x > 1 || p.x < -1 || p.y > 1 || p.y < -1 || p.z > 1 || p.z < -1)
                 valid = false;
             else
-                pos[j] = p;
+                vertices[j].pixel_pos = p;
         }
     }
 
     if(valid){
         for(int j = 0; j < 3; j++){
-            vertices[j].pixel_pos = view_port * pos.at(j);
+            vertices[j].pixel_pos = view_port * vertices.at(j).pixel_pos;
             vertices[j].mat_id    = Obj.material_id.at(i+j);
             vertices[j].norm      = matrices.invModelView * glm::vec4(Obj.normal.at(i+j), 0.0f);
             vertices[j].color     = vertex(vertices.at(j));
@@ -181,11 +180,11 @@ void CloseToGL::rasterize(std::array<PointInfo, 3> vertices)
 
     PointInfo interpolatedVert = interpolate(bot, top, edgeM / edgeB);
 
-    std::array<PointInfo, 3> topVert = { vertices[0], vertices[1], interpolatedVert },
-                             botVert = { vertices[2], vertices[1], interpolatedVert };
-
-    drawTopTriangle(topVert);
-    drawBotTriangle(botVert);
+    vertices[2] = interpolatedVert;
+    drawTopTriangle(vertices);
+    
+    vertices[0] = bot;
+    drawBotTriangle(vertices);
 }
 
 void CloseToGL::drawTopTriangle(std::array<PointInfo, 3> vertices)
@@ -237,12 +236,14 @@ void CloseToGL::drawBotTriangle(std::array<PointInfo, 3> vertices)
 
 void CloseToGL::scanline(PointInfo left, PointInfo right, int y)
 {
-    float incX = 1/(right.pixel_pos.x - left.pixel_pos.x);
-    float acc  = 0;
+    int   start = std::ceil(left.pixel_pos.x)-1,
+          end   = std::ceil(right.pixel_pos.x);
+    float incX  = 1/(right.pixel_pos.x - left.pixel_pos.x),
+          acc   = 0;
 
     PointInfo frag;
     Pixel p;
-    for(int x = std::ceil(left.pixel_pos.x); x < std::ceil(right.pixel_pos.x); x++){
+    for(int x = start; x < end; x++){
         frag = interpolate(left, right, acc);
 
         frag.color     /= frag.w;
@@ -287,8 +288,10 @@ void CloseToGL::fillBuffers(Pixel p, int x, int y, float z)
 
 void CloseToGL::cleanBuffers()
 {
-    std::fill(ColorBuffer.begin(), ColorBuffer.end(), Pixel());
-    std::fill(ZBuffer.begin(), ZBuffer.end(), std::numeric_limits<float>::max());
+    float val = std::numeric_limits<float>::max();
+    int   qtd = windowSize.width*windowSize.height;
+    ColorBuffer.assign(qtd, Pixel());
+    ZBuffer.assign(qtd, val);
 }
 
 void CloseToGL::updateWindowSize(WindowSize windowSize)
@@ -297,7 +300,7 @@ void CloseToGL::updateWindowSize(WindowSize windowSize)
     this->windowSize.height = windowSize.height;
 
     ColorBuffer.resize(windowSize.width * windowSize.height * 4);
-    ZBuffer.resize(windowSize.width * windowSize.height);
+    ZBuffer.resize(windowSize.width * windowSize.height, std::numeric_limits<float>::max());
 
     view_port = Matrix_View_Port((float) windowSize.width, (float) windowSize.height);
 
