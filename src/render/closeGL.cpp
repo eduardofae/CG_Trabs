@@ -46,24 +46,25 @@ void CloseToGL::renderCloseGL(GLuint program, Matrices matrices,
 
     cleanBuffers();
 
-    setShaderInfo(Obj, color, useColor, shadingType, camera_position);
+    setShaderInfo(Obj, color, useColor, shadingType, camera_position, g_mashType);
 
     CullingInfo cullingInfo = { g_windingOrder, g_backFaceCulling };
 
-    backFaceCulling(Obj, matrices, cullingInfo);
+    drawImage(Obj, matrices, cullingInfo);
 
     linkTexture(program);
 
     glFrontFace(GL_CCW);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void CloseToGL::setShaderInfo(ObjectInfo Obj, float *color, bool useColor, int shadingType, glm::vec4 camera_position)
+void CloseToGL::setShaderInfo(ObjectInfo &Obj, float *color, bool useColor, int shadingType, glm::vec4 camera_position, int mashType)
 {
     glm::vec3 cor = glm::vec3(color[0], color[1], color[2]);
     for(auto &mat : Obj.materialInfos)
         mat.diffuse = useColor ? cor : mat.diffuse;
-    this->shader = { shadingType, camera_position, Obj.materialInfos };
+    this->shader = { shadingType, camera_position, Obj.materialInfos, mashType };
 }
 
 void CloseToGL::linkTexture(GLuint program)
@@ -74,66 +75,65 @@ void CloseToGL::linkTexture(GLuint program)
           ColorBuffer.data());
 }
 
-void CloseToGL::backFaceCulling(ObjectInfo Obj, Matrices matrices, CullingInfo cullingInfo)
+void CloseToGL::backFaceCulling(std::array<PointInfo, 3> vertices, CullingInfo cullingInfo)
+{
+    bool valid = true;
+    glm::vec4 edge1, edge2, norm,
+        view = { 0.0f, 0.0f, -1.0f, 0.0f };
+
+    if(cullingInfo.backFaceCulling){
+        edge1 = vertices.at(1).pos - vertices.at(0).pos;
+        edge2 = vertices.at(2).pos - vertices.at(0).pos;
+        switch(cullingInfo.windingOrder){
+            case cw : 
+                norm = crossproduct(edge1, edge2);
+                if(dotproduct(norm, view) < 0)
+                    valid = false;
+                break;
+            case ccw :
+                norm = crossproduct(edge2, edge1);
+                if(dotproduct(norm, view) < 0)
+                    valid = false;
+                break;
+        }
+    }
+
+    if(valid)
+        rasterize(vertices);
+}
+
+void CloseToGL::drawImage(ObjectInfo &Obj, Matrices matrices, CullingInfo cullingInfo)
 {
     const int size = Obj.position.size();
-    glm::vec3 edge1, edge2, view, norm,
-              cam = glm::vec3(shader.camera_position);
     std::array<PointInfo, 3> vertices;
     for(int i = 0; i < size; i += 3){
-        bool valid = true;
-
-        if(cullingInfo.backFaceCulling){
-            edge1 = Obj.position.at(i+1) - Obj.position.at(i);
-            edge2 = Obj.position.at(i+2) - Obj.position.at(i);
-            view  = Obj.position.at(i)   - cam;
-            switch(cullingInfo.windingOrder){
-                case cw : 
-                    norm = crossproduct(edge1, edge2);
-                    if(dotproduct(norm, view) < 0)
-                        valid = false;
-                    break;
-                case ccw :
-                    norm = crossproduct(edge2, edge1);
-                    if(dotproduct(norm, view) < 0)
-                        valid = false;
-                    break;
+        for(int j = 0; j < 3; j++){
+            vertices[j].pos = matrices.view * matrices.model * glm::vec4(Obj.position.at(i+j), 1.0f);
+            vertices[j].pixel_pos = matrices.proj * vertices.at(j).pos;
+        }
+    
+        bool valid = false;
+        if(vertices.at(0).pixel_pos.w != 0 && vertices.at(1).pixel_pos.w != 0 && vertices.at(2).pixel_pos.w != 0){
+            valid = true;
+            glm::vec4 p;
+            for(int j = 0; j < 3 && valid; j++){
+                p = vertices.at(j).pixel_pos / vertices.at(j).pixel_pos.w;
+                if(p.x > 1 || p.x < -1 || p.y > 1 || p.y < -1 || p.z > 1 || p.z < -1)
+                    valid = false;
+                else
+                    vertices[j].pixel_pos = p;
             }
         }
 
-        if(valid)
-            frustrumCulling(Obj, vertices, matrices, i);
-    }
-}
-
-void CloseToGL::frustrumCulling(ObjectInfo Obj, std::array<PointInfo, 3> vertices, Matrices matrices, int i)
-{
-    for(int j = 0; j < 3; j++){
-        vertices[j].pos = matrices.view * matrices.model * glm::vec4(Obj.position.at(i+j), 1.0f);
-        vertices[j].pixel_pos = matrices.proj * vertices.at(j).pos;
-    }   
-    
-    bool valid = false;
-    if(vertices.at(0).pixel_pos.w != 0 && vertices.at(1).pixel_pos.w != 0 && vertices.at(2).pixel_pos.w != 0){
-        valid = true;
-        glm::vec4 p;
-        for(int j = 0; j < 3 && valid; j++){
-            p = vertices.at(j).pixel_pos / vertices.at(j).pixel_pos.w;
-            if(p.x > 1 || p.x < -1 || p.y > 1 || p.y < -1 || p.z > 1 || p.z < -1)
-                valid = false;
-            else
-                vertices[j].pixel_pos = p;
+        if(valid){
+            for(int j = 0; j < 3; j++){
+                vertices[j].pixel_pos = view_port * vertices.at(j).pixel_pos;
+                vertices[j].mat_id    = Obj.material_id.at(i+j);
+                vertices[j].norm      = matrices.invModelView * glm::vec4(Obj.normal.at(i+j), 0.0f);
+                vertices[j].color     = vertex(vertices.at(j));
+            }   
+            backFaceCulling(vertices, cullingInfo);
         }
-    }
-
-    if(valid){
-        for(int j = 0; j < 3; j++){
-            vertices[j].pixel_pos = view_port * vertices.at(j).pixel_pos;
-            vertices[j].mat_id    = Obj.material_id.at(i+j);
-            vertices[j].norm      = matrices.invModelView * glm::vec4(Obj.normal.at(i+j), 0.0f);
-            vertices[j].color     = vertex(vertices.at(j));
-        }        
-        rasterize(vertices);
     }
 }
 
@@ -158,6 +158,13 @@ void CloseToGL::rasterize(std::array<PointInfo, 3> vertices)
     assert(vertices[0].pixel_pos.y >= vertices[1].pixel_pos.y);
     assert(vertices[0].pixel_pos.y >  vertices[2].pixel_pos.y);
     assert(vertices[1].pixel_pos.y >= vertices[2].pixel_pos.y);
+
+    if(shader.mashType == line){
+        drawLine({ vertices.at(1), vertices.at(0) });
+        drawLine({ vertices.at(2), vertices.at(0) });
+        drawLine({ vertices.at(2), vertices.at(1) });
+        return;
+    }
     
     if(vertices[1].pixel_pos.y == vertices[2].pixel_pos.y){
         drawTopTriangle(vertices);
@@ -165,7 +172,7 @@ void CloseToGL::rasterize(std::array<PointInfo, 3> vertices)
     }
 
     if(vertices[0].pixel_pos.y == vertices[1].pixel_pos.y){
-        std::swap(vertices[0], vertices[2]);
+        std::swap(vertices[0], vertices[2]); 
         drawBotTriangle(vertices);
         return;
     }
@@ -187,64 +194,27 @@ void CloseToGL::rasterize(std::array<PointInfo, 3> vertices)
     drawBotTriangle(vertices);
 }
 
-void CloseToGL::drawTopTriangle(std::array<PointInfo, 3> vertices)
-{
-    float incY = 1/(vertices[0].pixel_pos.y - vertices[1].pixel_pos.y);
-    float acc  = 0;
-    int start  = std::ceil(vertices[1].pixel_pos.y),
-        end    = std::ceil(vertices[0].pixel_pos.y);
-
-    assert(vertices[0].pixel_pos.y > vertices[1].pixel_pos.y);
-    assert(vertices[0].pixel_pos.y > vertices[2].pixel_pos.y);
-
-    if(vertices[1].pixel_pos.x > vertices[2].pixel_pos.x)
-        std::swap(vertices[1], vertices[2]);
-
-    PointInfo left, right;
-    for(int y = start; y < end; y++){
-        left  = interpolate(vertices[0], vertices[1], acc);
-        right = interpolate(vertices[0], vertices[2], acc);
-        
-        scanline(left, right, y);
-
-        acc += incY;
+void CloseToGL::drawLine(std::array<PointInfo, 2> vertices){
+    int  y0   = std::ceil(vertices.at(0).pixel_pos.y);
+    int  y1   = std::ceil(vertices.at(1).pixel_pos.y);
+    int  x0   = std::ceil(vertices.at(0).pixel_pos.x);
+    int  x1   = std::ceil(vertices.at(1).pixel_pos.x);
+    bool useY = std::fabs(y0 - y1) > std::fabs(x0 - x1);
+    if(!useY && vertices.at(0).pixel_pos.x > vertices.at(1).pixel_pos.x){
+        std::swap(vertices.at(0), vertices.at(1));
+        std::swap(x0, x1);
+        std::swap(y0, y1);
     }
-}
-
-void CloseToGL::drawBotTriangle(std::array<PointInfo, 3> vertices)
-{
-    float incY = 1/(vertices[1].pixel_pos.y - vertices[0].pixel_pos.y);
-    float acc  = 0;
-    int start  = std::ceil(vertices[0].pixel_pos.y),
-        end    = std::ceil(vertices[1].pixel_pos.y);
-
-    assert(vertices[0].pixel_pos.y > vertices[1].pixel_pos.y);
-    assert(vertices[0].pixel_pos.y > vertices[2].pixel_pos.y);
-
-    if(vertices[1].pixel_pos.x > vertices[2].pixel_pos.x)
-        std::swap(vertices[1], vertices[2]);
-
-    PointInfo left, right;
-    for(int y = start; y < end; y++){
-        left = interpolate(vertices[1], vertices[0], acc);
-        right = interpolate(vertices[2], vertices[0], acc);
-
-        scanline(left, right, y);
-        acc += incY;
-    }
-}
-
-void CloseToGL::scanline(PointInfo left, PointInfo right, int y)
-{
-    int   start = std::ceil(left.pixel_pos.x)-1,
-          end   = std::ceil(right.pixel_pos.x);
-    float incX  = 1/(right.pixel_pos.x - left.pixel_pos.x),
-          acc   = 0;
-
-    PointInfo frag;
+    int  dx   = abs(x1-x0), sx = x0<x1 ? 1 : -1;
+    int  dy   = abs(y1-y0), sy = y0<y1 ? 1 : -1; 
+    int  err  = (dx>dy ? dx : -dy)/2, e2; 
+    float inc = useY ? 1/(vertices.at(1).pixel_pos.y - vertices.at(0).pixel_pos.y) : 
+                       1/(vertices.at(1).pixel_pos.x - vertices.at(0).pixel_pos.x);
+    float acc = 0;
     Pixel p;
-    for(int x = start; x < end; x++){
-        frag = interpolate(left, right, acc);
+    PointInfo frag;
+    for(;;){
+        frag = interpolate(vertices.at(0), vertices.at(1), acc);
 
         frag.color     /= frag.w;
         frag.pixel_pos /= frag.w;
@@ -253,22 +223,90 @@ void CloseToGL::scanline(PointInfo left, PointInfo right, int y)
         frag.mat_id    /= frag.w;
 
         p = fragment(frag);
+        fillBuffers(p, x0, y0, frag.pixel_pos.z);
+        acc += inc;
+
+        if (x0==x1 && y0==y1) break;
+        e2 = err;
+        if (e2 >-dx) { err -= dy; x0 += sx; }
+        if (e2 < dy) { err += dx; y0 += sy; }
+    }
+}
+
+void CloseToGL::drawTopTriangle(std::array<PointInfo, 3> vertices)
+{
+    int start = std::ceil(vertices[2].pixel_pos.y),
+        end   = std::ceil(vertices[0].pixel_pos.y);
+
+    assert(vertices[0].pixel_pos.y > vertices[1].pixel_pos.y);
+    assert(vertices[0].pixel_pos.y > vertices[2].pixel_pos.y);
+
+    if(vertices[1].pixel_pos.x > vertices[2].pixel_pos.x)
+        std::swap(vertices[1], vertices[2]);
+
+    PointInfo left, right;
+    for(int y = start; y < end; y++){
+        float t = (y-vertices[2].pixel_pos.y)/(vertices[0].pixel_pos.y - vertices[2].pixel_pos.y);
+
+        left  = interpolate(vertices[0], vertices[1], t);
+        right = interpolate(vertices[0], vertices[2], t);
+        
+        scanline(left, right, y);
+    }
+}
+
+void CloseToGL::drawBotTriangle(std::array<PointInfo, 3> vertices)
+{
+    int start = std::ceil(vertices[0].pixel_pos.y),
+        end   = std::ceil(vertices[2].pixel_pos.y);
+
+    assert(vertices[0].pixel_pos.y > vertices[1].pixel_pos.y);
+    assert(vertices[0].pixel_pos.y > vertices[2].pixel_pos.y);
+
+    if(vertices[1].pixel_pos.x > vertices[2].pixel_pos.x)
+        std::swap(vertices[1], vertices[2]);
+
+    PointInfo left, right;
+    for(int y = start; y < end; y++){
+        float t = (y-vertices[0].pixel_pos.y) / (vertices[2].pixel_pos.y - vertices[0].pixel_pos.y);
+
+        left  = interpolate(vertices[1], vertices[0], t);
+        right = interpolate(vertices[2], vertices[0], t);
+
+        scanline(left, right, y);
+    }
+}
+
+void CloseToGL::scanline(PointInfo left, PointInfo right, int y)
+{
+    int start = std::ceil(left.pixel_pos.x),
+        end   = std::ceil(right.pixel_pos.x);
+
+    PointInfo frag;
+    Pixel p;
+    for(int x = start; x < end; x++){
+        float t = (x-left.pixel_pos.x) / (right.pixel_pos.x - left.pixel_pos.x);
+        frag = interpolate(left, right, t);
+        frag.color     /= frag.w;
+        frag.pixel_pos /= frag.w;
+        frag.norm      /= frag.w;
+        frag.pos       /= frag.w;
+        frag.mat_id    /= frag.w;
+
+        p = fragment(frag);
         fillBuffers(p, x, y, frag.pixel_pos.z);
-        acc += incX;
     }
 }
 
 PointInfo CloseToGL::interpolate(PointInfo top, PointInfo bot, float t)
 {
     PointInfo point;
-
     point.color     = top.color     * t + bot.color     * (1 - t);
     point.mat_id    = top.mat_id    * t + bot.mat_id    * (1 - t);
     point.norm      = top.norm      * t + bot.norm      * (1 - t);
     point.pos       = top.pos       * t + bot.pos       * (1 - t);
     point.pixel_pos = top.pixel_pos * t + bot.pixel_pos * (1 - t);
     point.w         = top.w         * t + bot.w         * (1 - t);
-
     return point;
 }
 
@@ -276,6 +314,8 @@ void CloseToGL::fillBuffers(Pixel p, int x, int y, float z)
 {
     assert(x < windowSize.width);
     assert(y < windowSize.height);
+    assert(x >= 0);
+    assert(y >= 0);
 
     const int pos = y * windowSize.width + x;
     assert(pos < ZBuffer.size());
@@ -283,7 +323,7 @@ void CloseToGL::fillBuffers(Pixel p, int x, int y, float z)
     if(z < ZBuffer.at(pos)){
         ZBuffer[pos] = z;
         ColorBuffer[pos] = p;
-    }   
+    }
 }
 
 void CloseToGL::cleanBuffers()

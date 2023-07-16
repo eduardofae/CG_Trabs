@@ -39,7 +39,7 @@ bool   g_backFaceCulling = true;
 int    g_mashType = triangle;
 double g_LastCursorPosX, g_LastCursorPosY;
 bool   g_rotateCam = false;
-int    g_renderType = closeGL;
+int    g_renderType = openGL;
 
 glm::vec4 g_cameraInitialPosition = glm::vec4(0.0f, 1000.0f, 1500.0f, 1.0f);
 PressedKeys g_keys{false, false, false, false, false, false};
@@ -135,13 +135,13 @@ int main( int argc, char** argv )
 
     bool  useColor       = true;
     float color[3]       = { 1.0f, 1.0f, 1.0f }; // Cor sendo usada
-    float nearplane      = 0.01f;                // Posição do "near plane"
+    float nearplane      = 0.1f;                 // Posição do "near plane"
     float farplane       = 5000.0f;              // Posição do "far plane"
     float field_of_viewV = 60.0f;                // Campo de visão Vertical
     float field_of_viewH = 60.0f;                // Campo de visão horizontal
     float last_time      = 0.0f;
     bool  symmetric      = true;
-    int   shadingType    = GouAD;
+    int   shadingType    = NoneVert;
 
     while (!glfwWindowShouldClose(window))
     {

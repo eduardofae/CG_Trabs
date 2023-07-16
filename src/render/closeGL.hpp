@@ -52,6 +52,7 @@ typedef struct {
     int shadingType;
     glm::vec4 camera_position;
     std::vector <MaterialInfo> materials;
+    int mashType;
 } ShaderInfo;
 
 typedef struct {
@@ -90,9 +91,10 @@ class CloseToGL{
         auto scanline(PointInfo left, PointInfo right, int y) -> void;
         auto interpolate(PointInfo top, PointInfo bot, float t) -> PointInfo;
         auto fillBuffers(Pixel p, int x, int y, float z) -> void;
-        auto backFaceCulling(ObjectInfo Obj, Matrices matrices, CullingInfo cullingInfo) -> void;
-        auto frustrumCulling(ObjectInfo Obj, std::array<PointInfo, 3> vertices, Matrices matrices, int i) -> void;
+        auto backFaceCulling(std::array<PointInfo, 3> vertices, CullingInfo cullingInfo) -> void;
+        auto drawImage(ObjectInfo &Obj, Matrices matrices,  CullingInfo cullingInfo) -> void;
         auto linkTexture(GLuint program) -> void;
-        auto setShaderInfo(ObjectInfo Obj, float *color, bool useColor,
-                           int shadingType, glm::vec4 camera_position) -> void;
+        auto setShaderInfo(ObjectInfo &Obj, float *color, bool useColor, int shadingType,
+                           glm::vec4 camera_position, int mashType) -> void;
+        auto drawLine(std::array<PointInfo, 2> vertices) -> void;
 };
