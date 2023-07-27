@@ -1,6 +1,8 @@
 #include "openGL.hpp"
 
-void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals, std::vector<GLint> material_id)
+void buildOpenGL(GLuint *VAOs, GLuint *Buffers,
+                 std::vector<GLfloat> vertices, std::vector<GLfloat> normals,
+                 std::vector<GLint> material_id, std::vector<GLfloat> text_coords)
 {
     glBindVertexArray(VAOs[OpenGL]);
 
@@ -25,13 +27,21 @@ void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, s
     glVertexAttribPointer(vMaterialId, 1, GL_INT,
         GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vMaterialId);
+
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[TextureBuffer]);
+    glBufferStorage(GL_ARRAY_BUFFER, text_coords.size()*sizeof(GLfloat), text_coords.data(), 0);
+
+    glVertexAttribPointer(vTexture, 2, GL_FLOAT,
+        GL_FALSE, 0, BUFFER_OFFSET(0));
+    glEnableVertexAttribArray(vTexture);
 }
 
 void renderOpenGL(GLuint program, Matrices matrices,
                   float *color, bool useColor, GLuint *VAOs,
                   int g_mashType, int g_windingOrder, int g_backFaceCulling, int size,
                   int shadingType, GLuint *lightModels, glm::vec4 camera_position,
-                  std::vector <MaterialInfo> materials)
+                  std::vector <MaterialInfo> materials, GLuint texture_id, GLuint sampler_id,
+                  bool hasTexture)
 {
     glUseProgram(program);
 
@@ -60,6 +70,7 @@ void renderOpenGL(GLuint program, Matrices matrices,
     glUniformMatrix4fv(glGetUniformLocation(program, "projection")        , 1 , GL_FALSE , glm::value_ptr(matrices.proj));
 
     glUniform4fv(glGetUniformLocation(program, "camera_position")         , 1            , glm::value_ptr(camera_position));
+    glUniform1i(glGetUniformLocation(program, "hasTexture")                              , hasTexture);
 
     for(int i = 0; i < materials.size(); i++){
         std::string mat = "materials[" + std::to_string(i) + "].";
@@ -73,6 +84,8 @@ void renderOpenGL(GLuint program, Matrices matrices,
     };
     
     glBindVertexArray(VAOs[OpenGL]);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glBindSampler(0, sampler_id);
 
     switch (g_mashType){
         case point:
@@ -94,4 +107,31 @@ void renderOpenGL(GLuint program, Matrices matrices,
     else glDisable(GL_CULL_FACE);
 
     glDrawArrays(GL_TRIANGLES, 0, size);
+}
+
+void updateTextureOpenGL(TextureInfo texture, GLuint * texture_id, GLuint *sampler_id)
+{
+    // Agora criamos objetos na GPU com OpenGL para armazenar a textura
+    glGenTextures(1, texture_id);
+    glGenSamplers(1, sampler_id);
+
+    // Veja slides 95-96 do documento Aula_20_Mapeamento_de_Texturas.pdf
+    glSamplerParameteri(*sampler_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glSamplerParameteri(*sampler_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Parâmetros de amostragem da textura.
+    glSamplerParameteri(*sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glSamplerParameteri(*sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Agora enviamos a imagem lida do disco para a GPU
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, *texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, texture.width, texture.height, 0, GL_RGB, GL_UNSIGNED_BYTE, texture.data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindSampler(0, *sampler_id);
 }

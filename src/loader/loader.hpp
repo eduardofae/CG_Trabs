@@ -1,5 +1,6 @@
 #include <GL3/gl3.h>
 #include <GL3/gl3w.h>
+#include <stb_image.h>
 
 #include <GLFW/glfw3.h>
 
@@ -28,3 +29,4 @@ typedef struct {
 static const GLchar* ReadShader(const char* filename);
 GLuint LoadShaders(ShaderLocation* shaders);
 ObjectInfo ReadObject(char *FileName);
+TextureInfo LoadTextureImage(const char* filename);

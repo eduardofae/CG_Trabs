@@ -13,6 +13,7 @@ subroutine uniform Shading lightModels;
 layout( location = 0 ) in vec3  vPosition;
 layout( location = 1 ) in vec3  vNormal;
 layout( location = 2 ) in int   vMaterialId;
+layout( location = 3 ) in vec2  vTexture;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -20,12 +21,16 @@ uniform mat4 projection;
 
 uniform vec4 camera_position;
 
+uniform sampler2D text;
+uniform bool hasTexture;
+
 uniform MaterialInfo materials[50];
 
 out vec3 inColor;
 out vec4 inPosition;
 out vec4 inNormal;
 out vec4 inCam;
+out vec2 inTexture;
 
 out MaterialInfo inMat;
 
@@ -35,6 +40,8 @@ subroutine (Shading) vec3 GAD(vec4 p, vec4 n, vec4 cam, MaterialInfo mat){
     vec3 Ia = vec3(0.2, 0.2, 0.2);
 
     vec3 lambert_diffuse_term = mat.diffuse*I*max(0,dot(n,l));
+    if(hasTexture)
+        lambert_diffuse_term = texture(text, vTexture).rgb*I*max(0,dot(n,l));
     vec3 ambient_term = mat.ambient*Ia;
 
     return lambert_diffuse_term + ambient_term;
@@ -49,6 +56,8 @@ subroutine (Shading) vec3 GADS(vec4 p, vec4 n, vec4 cam, MaterialInfo mat){
     vec4 r = -l + 2*n*dot(n,l);
 
     vec3 lambert_diffuse_term = mat.diffuse*I*max(0,dot(n,l));
+    if(hasTexture)
+        lambert_diffuse_term = texture(text, vTexture).rgb*I*max(0,dot(n,l));
     vec3 ambient_term         = mat.ambient*Ia;
     vec3 phong_specular_term  = mat.specular*I*pow(max(0,dot(r,v)),mat.shine);
 
@@ -67,6 +76,8 @@ void main()
     inMat = materials[vMaterialId];
     
     inColor = lightModels(inPosition, inNormal, inCam, inMat);
+
+    inTexture = vTexture;
 
     gl_Position = projection * view * inPosition;
 }
