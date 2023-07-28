@@ -9,6 +9,7 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <string>
 
 // Headers da biblioteca GLM: criação de matrizes e vetores.
 #include <glm/mat4x4.hpp>

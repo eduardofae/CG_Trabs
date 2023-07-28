@@ -57,7 +57,7 @@ subroutine (Shading) vec3 GADS(vec4 p, vec4 n, vec4 cam, MaterialInfo mat){
 
     vec3 lambert_diffuse_term = mat.diffuse*I*max(0,dot(n,l));
     if(hasTexture)
-        lambert_diffuse_term = texture(text, vTexture).rgb*I*max(0,dot(n,l));
+        lambert_diffuse_term  = texture(text, vTexture).rgb*I*max(0,dot(n,l));
     vec3 ambient_term         = mat.ambient*Ia;
     vec3 phong_specular_term  = mat.specular*I*pow(max(0,dot(r,v)),mat.shine);
 

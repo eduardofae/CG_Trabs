@@ -109,7 +109,7 @@ void renderOpenGL(GLuint program, Matrices matrices,
     glDrawArrays(GL_TRIANGLES, 0, size);
 }
 
-void updateTextureOpenGL(TextureInfo texture, GLuint * texture_id, GLuint *sampler_id)
+void updateTextureOpenGL(TextureInfo &texture, GLuint *texture_id, GLuint *sampler_id)
 {
     // Agora criamos objetos na GPU com OpenGL para armazenar a textura
     glGenTextures(1, texture_id);
@@ -131,7 +131,7 @@ void updateTextureOpenGL(TextureInfo texture, GLuint * texture_id, GLuint *sampl
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, *texture_id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, texture.width, texture.height, 0, GL_RGB, GL_UNSIGNED_BYTE, texture.data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, texture.width, texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture.data);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindSampler(0, *sampler_id);
 }

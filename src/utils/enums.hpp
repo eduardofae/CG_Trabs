@@ -56,7 +56,7 @@ typedef struct {
     std::vector<glm::vec3> position;
     std::vector<glm::vec3> normal;
     std::vector<glm::vec3> face_normal;
-    std::vector<std::array<float, 2>> texture_coords;
+    std::vector<glm::vec2> texture_coords;
     std::vector<int> material_id;
     std::vector<MaterialInfo> materialInfos;
     glm::vec3 center;
@@ -74,5 +74,5 @@ typedef struct {
     int width;
     int height;
     int channels;
-    char *data;
+    unsigned char *data;
 } TextureInfo;

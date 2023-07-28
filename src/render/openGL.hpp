@@ -22,4 +22,4 @@ void renderOpenGL(GLuint program, Matrices matrices,
                   int shadingType, GLuint *lightModels, glm::vec4 camera_position,
                   std::vector <MaterialInfo> materials, GLuint texture_id, GLuint sampler_id,
                   bool hasTexture);
-void updateTextureOpenGL(TextureInfo texture, GLuint * texture_id, GLuint *sampler_id);
+void updateTextureOpenGL(TextureInfo &texture, GLuint * texture_id, GLuint *sampler_id);

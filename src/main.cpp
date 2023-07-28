@@ -120,8 +120,8 @@ int main( int argc, char** argv )
     }
     std::vector<GLfloat> text_coords;
     for(auto &obj : Obj.texture_coords){
-        normals.emplace_back(obj.at(0));
-        normals.emplace_back(obj.at(1));
+        text_coords.emplace_back(obj.x);
+        text_coords.emplace_back(obj.y);
     }
 
     glEnable(GL_DEPTH_TEST);

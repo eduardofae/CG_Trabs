@@ -122,6 +122,8 @@ ObjectInfo ReadObject(char *FileName)
 
     Obj.texture = text == "YES";
 
+    std::cout << Obj.texture << std::endl;
+
     ch = 'b';
     while(ch!= '\n') fscanf(fp, "%c", &ch); // skip documentation line
     
@@ -133,7 +135,7 @@ ObjectInfo ReadObject(char *FileName)
     {
         glm::vec3 pos, norm, face_norm;
         int material_id;
-        std::array<float, 2> text_coords;
+        glm::vec2 text_coords;
         fscanf(fp, "v%*d %f %f %f %f %f %f %d",
             &(pos.x), &(pos.y), &(pos.z),
             &(norm.x), &(norm.y), &(norm.z),
@@ -144,7 +146,7 @@ ObjectInfo ReadObject(char *FileName)
 
         if(Obj.texture){
             fscanf(fp, " %f %f\n",
-                &(text_coords[0]), &(text_coords[1]));
+                &(text_coords.x), &(text_coords.y));
             Obj.texture_coords.emplace_back(text_coords);
         }
         else{
@@ -185,9 +187,10 @@ TextureInfo LoadTextureImage(const char* filename)
     // Primeiro fazemos a leitura da imagem do disco
     stbi_set_flip_vertically_on_load(true);
 
-    unsigned char *data = stbi_load(filename, &texture.width, &texture.height, &texture.channels, 3);
+    texture.data = stbi_load(filename, &texture.width, &texture.height, &texture.channels, 4);
+    texture.channels = 4;
 
-    if ( data == NULL )
+    if (texture.data == NULL)
     {
         fprintf(stderr, "ERROR: Cannot open image file \"%s\".\n", filename);
         std::exit(EXIT_FAILURE);

@@ -55,6 +55,7 @@ typedef struct {
     std::vector <MaterialInfo> materials;
     int mashType;
     bool hasTexture;
+    TextureInfo texture;
 } ShaderInfo;
 
 typedef struct {
@@ -85,19 +86,21 @@ class CloseToGL{
         GLuint      textureID = 0;
         glm::mat4   view_port;
 
-        auto rasterize(std::array<PointInfo, 3> vertices, TextureInfo &texture) -> void;
-        auto vertex(PointInfo vertex, TextureInfo &texture)-> glm::vec4;
-        auto fragment(PointInfo fragment, TextureInfo &texture) -> Pixel;
+        auto rasterize(std::array<PointInfo, 3> vertices) -> void;
+        auto vertex(PointInfo vertex)-> glm::vec4;
+        auto fragment(PointInfo fragment) -> Pixel;
         auto cleanBuffers() -> void;
-        auto drawTopTriangle(std::array<PointInfo, 3> vertices, TextureInfo &texture) -> void;
-        auto drawBotTriangle(std::array<PointInfo, 3> vertices, TextureInfo &texture) -> void;
-        auto scanline(PointInfo left, PointInfo right, int y, TextureInfo &texture) -> void;
+        auto drawTopTriangle(std::array<PointInfo, 3> vertices) -> void;
+        auto drawBotTriangle(std::array<PointInfo, 3> vertices) -> void;
+        auto scanline(PointInfo left, PointInfo right, int y) -> void;
         auto interpolate(PointInfo top, PointInfo bot, float t) -> PointInfo;
         auto fillBuffers(Pixel p, int x, int y, float z) -> void;
-        auto backFaceCulling(std::array<PointInfo, 3> vertices, CullingInfo cullingInfo, TextureInfo &texture) -> void;
-        auto drawImage(ObjectInfo &Obj, Matrices matrices,  CullingInfo cullingInfo, TextureInfo &texture) -> void;
+        auto backFaceCulling(std::array<PointInfo, 3> vertices, CullingInfo cullingInfo) -> void;
+        auto drawImage(ObjectInfo &Obj, Matrices matrices,  CullingInfo cullingInfo) -> void;
         auto linkTexture(GLuint program) -> void;
         auto setShaderInfo(ObjectInfo &Obj, float *color, bool useColor, int shadingType,
-                           glm::vec4 camera_position, int mashType) -> void;
-        auto drawLine(std::array<PointInfo, 2> vertices, TextureInfo &texture) -> void;
+                           glm::vec4 camera_position, int mashType, TextureInfo &texture) -> void;
+        auto drawLine(std::array<PointInfo, 2> vertices) -> void;
+        auto getTexturePos(PointInfo &point) -> int;
+        auto getTextureColor(PointInfo &point, int text_pos) -> glm::vec3;
 };
