@@ -117,13 +117,12 @@ ObjectInfo ReadObject(char *FileName)
         Obj.materialInfos.emplace_back(pai);
     }
 
-    char *text;
-    fscanf(fp,"Texture = %s\n", &text);
+    char text;
+    fscanf(fp,"Texture = %c", &text);
+    Obj.texture = text == 'Y';
 
-    Obj.texture = text == "YES";
-
-    std::cout << Obj.texture << std::endl;
-
+    ch = 'b';
+    while(ch!= '\n') fscanf(fp, "%c", &ch); // skip rest of the line
     ch = 'b';
     while(ch!= '\n') fscanf(fp, "%c", &ch); // skip documentation line
     

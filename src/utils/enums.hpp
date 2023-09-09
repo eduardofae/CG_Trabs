@@ -41,6 +41,12 @@ enum sType {
     numShadingTypes
 };
 
+enum samplingType {
+    nearNeig,
+    bilinear,
+    trilinear
+};
+
 typedef struct {
     glm::vec3   ambient;
     glm::vec3   diffuse;
@@ -76,3 +82,4 @@ typedef struct {
     int channels;
     unsigned char *data;
 } TextureInfo;
+

@@ -39,7 +39,7 @@ void CloseToGL::renderCloseGL(GLuint program, Matrices matrices,
                               float *color, bool useColor, GLuint *VAOs,
                               int g_mashType, int g_windingOrder, int g_backFaceCulling,
                               ObjectInfo Obj, int shadingType, glm::vec4 camera_position,
-                              TextureInfo &texture)
+                              TextureInfo &texture, bool useTexture, int samplingType)
 {
     glUseProgram(program);
 
@@ -47,7 +47,7 @@ void CloseToGL::renderCloseGL(GLuint program, Matrices matrices,
 
     cleanBuffers();
 
-    setShaderInfo(Obj, color, useColor, shadingType, camera_position, g_mashType, texture);
+    setShaderInfo(Obj, color, useColor, shadingType, camera_position, g_mashType, texture, useTexture, samplingType);
 
     CullingInfo cullingInfo = { g_windingOrder, g_backFaceCulling };
 
@@ -60,12 +60,13 @@ void CloseToGL::renderCloseGL(GLuint program, Matrices matrices,
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void CloseToGL::setShaderInfo(ObjectInfo &Obj, float *color, bool useColor, int shadingType, glm::vec4 camera_position, int mashType, TextureInfo &texture)
+void CloseToGL::setShaderInfo(ObjectInfo &Obj, float *color, bool useColor, int shadingType, glm::vec4 camera_position, 
+                              int mashType, TextureInfo &texture, bool useTexture, int samplingType)
 {
     glm::vec3 cor = glm::vec3(color[0], color[1], color[2]);
     for(auto &mat : Obj.materialInfos)
         mat.diffuse = useColor ? cor : mat.diffuse;
-    this->shader = { shadingType, camera_position, Obj.materialInfos, mashType, Obj.texture, texture };
+    this->shader = { shadingType, camera_position, Obj.materialInfos, mashType, Obj.texture && useTexture, samplingType, texture };
 }
 
 void CloseToGL::linkTexture(GLuint program)
@@ -121,8 +122,10 @@ void CloseToGL::drawImage(ObjectInfo &Obj, Matrices matrices, CullingInfo cullin
                 p = vertices.at(j).pixel_pos / vertices.at(j).pixel_pos.w;
                 if(p.x > 1 || p.x < -1 || p.y > 1 || p.y < -1 || p.z > 1 || p.z < -1)
                     valid = false;
-                else
+                else {
+                    vertices[j].w = 1.0f/vertices.at(j).pixel_pos.w;
                     vertices[j].pixel_pos = p;
+                }
             }
         }
 
@@ -145,9 +148,7 @@ void CloseToGL::drawImage(ObjectInfo &Obj, Matrices matrices, CullingInfo cullin
 void CloseToGL::rasterize(std::array<PointInfo, 3> vertices)
 {
     for(auto &vert : vertices){
-        vert.w            = 1/vert.pixel_pos.w;
         vert.color       *= vert.w;
-        vert.pixel_pos   *= vert.w;
         vert.norm        *= vert.w;
         vert.pos         *= vert.w;
         vert.mat_id      *= vert.w;
@@ -196,7 +197,8 @@ void CloseToGL::rasterize(std::array<PointInfo, 3> vertices)
     drawBotTriangle(vertices);
 }
 
-void CloseToGL::drawLine(std::array<PointInfo, 2> vertices){
+void CloseToGL::drawLine(std::array<PointInfo, 2> vertices)
+{
     int  y0   = std::ceil(vertices.at(0).pixel_pos.y);
     int  y1   = std::ceil(vertices.at(1).pixel_pos.y);
     int  x0   = std::ceil(vertices.at(0).pixel_pos.x);
@@ -217,7 +219,6 @@ void CloseToGL::drawLine(std::array<PointInfo, 2> vertices){
     PointInfo frag;
     for(;;){
         frag = interpolate(vertices.at(0), vertices.at(1), acc);
-
         frag.color       /= frag.w;
         frag.pixel_pos   /= frag.w;
         frag.norm        /= frag.w;
@@ -283,9 +284,8 @@ void CloseToGL::scanline(PointInfo left, PointInfo right, int y)
     Pixel p;
     for(int x = start; x < end; x++){
         float t = (x-left.pixel_pos.x) / (right.pixel_pos.x - left.pixel_pos.x);
-        frag = interpolate(left, right, t);
+        frag = interpolate(right, left, t);
         frag.color       /= frag.w;
-        frag.pixel_pos   /= frag.w;
         frag.norm        /= frag.w;
         frag.pos         /= frag.w;
         frag.mat_id      /= frag.w;
@@ -401,11 +401,9 @@ Pixel CloseToGL::fragment(PointInfo fragment)
 
             glm::vec3 lambert_diffuse_term = mat.diffuse*I*lambert;
             if(shader.hasTexture){
-                int text_pos         = getTexturePos(fragment);
-                glm::vec3 text_color = getTextureColor(fragment, text_pos);
-                lambert_diffuse_term = text_color*I*lambert;
-                alpha = shader.texture.data[text_pos+3]/255.0f;
-                // return Pixel(glm::vec4(fragment.text_coords, 0.0f, 1.0f));
+                glm::vec4 text_color = sampleTexture(fragment);
+                lambert_diffuse_term = glm::vec3(text_color)*I*lambert;   
+                alpha = text_color.w;
             }
             glm::vec3 ambient_term         = mat.ambient*Ia;
             glm::vec3 phong_specular_term  = mat.specular*I*std::pow(std::max(0.0f,dotproduct(r,v)),mat.shine);
@@ -415,14 +413,65 @@ Pixel CloseToGL::fragment(PointInfo fragment)
     return Pixel(fragment.color);
 }
 
-int CloseToGL::getTexturePos(PointInfo &point)
+glm::vec4 CloseToGL::sampleTexture(PointInfo &point)
 {
-    int x = std::round(point.text_coords.x*(shader.texture.width-1));
-    int y = std::round(point.text_coords.y*(shader.texture.height-1));
-    return (y * shader.texture.width + x) * shader.texture.channels;
+    switch(shader.samplingType){
+        case nearNeig: 
+        {
+            int x = std::round(point.text_coords.x*(shader.texture.width-1));
+            int y = std::round(point.text_coords.y*(shader.texture.height-1));
+            return readTexture(x,y);
+        }
+        case bilinear:
+        {
+            int x1 = std::floor(point.text_coords.x*(shader.texture.width-1));
+            int y1 = std::floor(point.text_coords.y*(shader.texture.height-1));
+            int x2 = std::ceil(point.text_coords.x*(shader.texture.width-1));
+            int y2 = std::ceil(point.text_coords.y*(shader.texture.height-1));
+            float weightX = point.text_coords.x - x1;
+            float weightY = point.text_coords.y - y1;
+
+            glm::vec4 colorL = readTexture(x1, y1);
+            glm::vec4 colorR = readTexture(x2, y1);
+            glm::vec4 colorT = interpolateColor(colorL, colorR, weightX);
+
+            colorL = readTexture(x1, y2);
+            colorR = readTexture(x2, y2);
+            glm::vec4 colorB = interpolateColor(colorL, colorR, weightX);
+
+            return interpolateColor(colorT, colorB, weightY);
+        }
+        case trilinear:
+        {
+            int x1 = std::floor(point.text_coords.x*(shader.texture.width-1));
+            int y1 = std::floor(point.text_coords.y*(shader.texture.height-1));
+            int x2 = std::ceil(point.text_coords.x*(shader.texture.width-1));
+            int y2 = std::ceil(point.text_coords.y*(shader.texture.height-1));
+            float weightX = point.text_coords.x - x1;
+            float weightY = point.text_coords.y - y1;
+
+            glm::vec4 colorL = readTexture(x1, y1);
+            glm::vec4 colorR = readTexture(x2, y1);
+            glm::vec4 colorT = interpolateColor(colorL, colorR, weightX);
+
+            colorL = readTexture(x1, y2);
+            colorR = readTexture(x2, y2);
+            glm::vec4 colorB = interpolateColor(colorL, colorR, weightX);
+
+            return interpolateColor(colorT, colorB, weightY);
+        }
+        default:
+            return glm::vec4(1.0f); 
+    }
 }
 
-glm::vec3 CloseToGL::getTextureColor(PointInfo &point, int text_pos)
+glm::vec4 CloseToGL::interpolateColor(glm::vec4 a, glm::vec4 b, float t)
 {
-    return glm::vec3(shader.texture.data[text_pos], shader.texture.data[text_pos+1], shader.texture.data[text_pos+2])/255.0f;
+    return b * t + a * (1.0f - t);
+}
+
+glm::vec4 CloseToGL::readTexture(int x, int y)
+{
+    int text_pos = (y * shader.texture.width + x) * shader.texture.channels;
+    return glm::vec4(shader.texture.data[text_pos], shader.texture.data[text_pos+1], shader.texture.data[text_pos+2], shader.texture.data[text_pos+3])/255.0f;
 }

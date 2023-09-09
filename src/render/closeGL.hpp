@@ -55,6 +55,7 @@ typedef struct {
     std::vector <MaterialInfo> materials;
     int mashType;
     bool hasTexture;
+    int samplingType;
     TextureInfo texture;
 } ShaderInfo;
 
@@ -76,7 +77,7 @@ class CloseToGL{
                            float *color, bool useColor, GLuint *VAOs,
                            int g_mashType, int g_windingOrder, int g_backFaceCulling,
                            ObjectInfo Obj, int shadingType, glm::vec4 camera_position,
-                           TextureInfo &texture) -> void;
+                           TextureInfo &texture, bool useTexture, int samplingType) -> void;
         auto updateWindowSize(WindowSize windowSize) -> void;
     private:
         std::vector <Pixel> ColorBuffer;
@@ -99,8 +100,10 @@ class CloseToGL{
         auto drawImage(ObjectInfo &Obj, Matrices matrices,  CullingInfo cullingInfo) -> void;
         auto linkTexture(GLuint program) -> void;
         auto setShaderInfo(ObjectInfo &Obj, float *color, bool useColor, int shadingType,
-                           glm::vec4 camera_position, int mashType, TextureInfo &texture) -> void;
+                           glm::vec4 camera_position, int mashType, TextureInfo &texture,
+                           bool useTexture, int samplingType) -> void;
         auto drawLine(std::array<PointInfo, 2> vertices) -> void;
-        auto getTexturePos(PointInfo &point) -> int;
-        auto getTextureColor(PointInfo &point, int text_pos) -> glm::vec3;
+        auto sampleTexture(PointInfo &point) -> glm::vec4;
+        auto interpolateColor(glm::vec4 a, glm::vec4 b, float t) -> glm::vec4;
+        auto readTexture(int x, int y) -> glm::vec4;
 };

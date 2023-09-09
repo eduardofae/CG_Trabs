@@ -17,4 +17,5 @@ void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bo
                glm::vec4 *camera_position_c, glm::vec4 g_cameraInitialPosition,
                glm::vec4 *camera_view_vector, glm::vec4 camera_lookat_l,
                int *g_renderType, float delta_time,
-               float *field_of_viewH, bool *symmetric, int *shadingType);
+               float *field_of_viewH, bool *symmetric, int *shadingType,
+               bool *useTexture, int *samplingType);

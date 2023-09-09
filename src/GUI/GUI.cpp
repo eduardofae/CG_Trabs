@@ -18,7 +18,8 @@ void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bo
                glm::vec4 *camera_position_c, glm::vec4 g_cameraInitialPosition,
                glm::vec4 *camera_view_vector, glm::vec4 camera_lookat_l,
                int *g_renderType, float delta_time,
-               float *field_of_viewH, bool *symmetric, int *shadingType)
+               float *field_of_viewH, bool *symmetric, int *shadingType,
+               bool *useTexture, int *samplingType)
 {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -45,6 +46,12 @@ void renderGUI(int *g_mashType, bool *g_backFaceCulling, int *g_windingOrder, bo
                 ImGui::ColorEdit3("##cw", color);
                 
                 ImGui::AlignTextToFramePadding();
+
+                ImGui::SeparatorText("Sampling");
+                ImGui::Checkbox("Texture" , useTexture);
+                ImGui::RadioButton("Nearest-Neighbor" , samplingType, nearNeig); 
+                ImGui::RadioButton("Bilinear Resampling", samplingType, bilinear);
+                ImGui::RadioButton("Trilinear Resampling", samplingType, trilinear);
 
                 ImGui::EndTabItem();
             }

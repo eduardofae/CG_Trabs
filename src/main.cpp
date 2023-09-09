@@ -151,7 +151,9 @@ int main( int argc, char** argv )
     float field_of_viewH = 60.0f;                // Campo de visão horizontal
     float last_time      = 0.0f;
     bool  symmetric      = true;
-    int   shadingType    = NoneVert;
+    int   shadingType    = Phong;
+    bool  useTexture     = true;
+    int   samplingType   = bilinear;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -196,14 +198,15 @@ int main( int argc, char** argv )
         else
             cgl.renderCloseGL(closeToProgram, matrices, color, useColor,
             VAOs, g_mashType, g_windingOrder, g_backFaceCulling, Obj,
-            shadingType, camera_position_c, texture);
+            shadingType, camera_position_c, texture, useTexture, samplingType);
 
         renderGUI(&g_mashType, &g_backFaceCulling, &g_windingOrder, &useColor,
                   color, &g_camStyle, &g_projectionType, &farplane, &nearplane,
                   &field_of_viewV, &g_CameraDistance,
                   &camera_position_c, g_cameraInitialPosition,
                   &camera_view_vector, camera_lookat_l,
-                  &g_renderType, delta_time, &field_of_viewH, &symmetric, &shadingType);
+                  &g_renderType, delta_time, &field_of_viewH, &symmetric, &shadingType,
+                  &useTexture, &samplingType);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
