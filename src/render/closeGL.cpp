@@ -415,21 +415,21 @@ Pixel CloseToGL::fragment(PointInfo fragment)
 
 glm::vec4 CloseToGL::sampleTexture(PointInfo &point)
 {
-    switch(shader.samplingType){
+    int x = point.text_coords.x*(shader.texture.width-1);
+    int y = point.text_coords.y*(shader.texture.height-1);
+    switch(shader.samplingType) 
+    {
         case nearNeig: 
-        {
-            int x = std::round(point.text_coords.x*(shader.texture.width-1));
-            int y = std::round(point.text_coords.y*(shader.texture.height-1));
-            return readTexture(x,y);
-        }
+            return readTexture(std::round(x), std::round(y));
+
         case bilinear:
         {
-            int x1 = std::floor(point.text_coords.x*(shader.texture.width-1));
-            int y1 = std::floor(point.text_coords.y*(shader.texture.height-1));
-            int x2 = std::ceil(point.text_coords.x*(shader.texture.width-1));
-            int y2 = std::ceil(point.text_coords.y*(shader.texture.height-1));
-            float weightX = point.text_coords.x - x1;
-            float weightY = point.text_coords.y - y1;
+            int x1 = std::floor(x);
+            int y1 = std::floor(y);
+            int x2 = std::ceil(x);
+            int y2 = std::ceil(y);
+            float weightX = x - x1;
+            float weightY = y - y1;
 
             glm::vec4 colorL = readTexture(x1, y1);
             glm::vec4 colorR = readTexture(x2, y1);
@@ -441,14 +441,15 @@ glm::vec4 CloseToGL::sampleTexture(PointInfo &point)
 
             return interpolateColor(colorT, colorB, weightY);
         }
+
         case trilinear:
         {
-            int x1 = std::floor(point.text_coords.x*(shader.texture.width-1));
-            int y1 = std::floor(point.text_coords.y*(shader.texture.height-1));
-            int x2 = std::ceil(point.text_coords.x*(shader.texture.width-1));
-            int y2 = std::ceil(point.text_coords.y*(shader.texture.height-1));
-            float weightX = point.text_coords.x - x1;
-            float weightY = point.text_coords.y - y1;
+            int x1 = std::floor(x);
+            int y1 = std::floor(y);
+            int x2 = std::ceil(x);
+            int y2 = std::ceil(y);
+            float weightX = x - x1;
+            float weightY = y - y1;
 
             glm::vec4 colorL = readTexture(x1, y1);
             glm::vec4 colorR = readTexture(x2, y1);
@@ -460,6 +461,7 @@ glm::vec4 CloseToGL::sampleTexture(PointInfo &point)
 
             return interpolateColor(colorT, colorB, weightY);
         }
+
         default:
             return glm::vec4(1.0f); 
     }
