@@ -41,7 +41,7 @@ void renderOpenGL(GLuint program, Matrices matrices,
                   int g_mashType, int g_windingOrder, int g_backFaceCulling, int size,
                   int shadingType, GLuint *lightModels, glm::vec4 camera_position,
                   std::vector <MaterialInfo> materials, GLuint texture_id, GLuint sampler_id,
-                  bool hasTexture)
+                  bool hasTexture, bool useTexture, int samplingType)
 {
     glUseProgram(program);
 
@@ -65,12 +65,28 @@ void renderOpenGL(GLuint program, Matrices matrices,
             break;
     }
 
+    switch (samplingType) 
+    {
+        case nearNeig:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            break;
+        case bilinear:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            break;
+        case trilinear:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        
+    }
+
     glUniformMatrix4fv(glGetUniformLocation(program, "model")             , 1 , GL_FALSE , glm::value_ptr(matrices.model));
     glUniformMatrix4fv(glGetUniformLocation(program, "view")              , 1 , GL_FALSE , glm::value_ptr(matrices.view));
     glUniformMatrix4fv(glGetUniformLocation(program, "projection")        , 1 , GL_FALSE , glm::value_ptr(matrices.proj));
 
     glUniform4fv(glGetUniformLocation(program, "camera_position")         , 1            , glm::value_ptr(camera_position));
-    glUniform1i(glGetUniformLocation(program, "hasTexture")                              , hasTexture);
+    glUniform1i(glGetUniformLocation(program, "useTexture")                              , hasTexture && useTexture);
 
     for(int i = 0; i < materials.size(); i++){
         std::string mat = "materials[" + std::to_string(i) + "].";
@@ -111,27 +127,11 @@ void renderOpenGL(GLuint program, Matrices matrices,
 
 void updateTextureOpenGL(TextureInfo &texture, GLuint *texture_id, GLuint *sampler_id)
 {
-    // Agora criamos objetos na GPU com OpenGL para armazenar a textura
     glGenTextures(1, texture_id);
-    glGenSamplers(1, sampler_id);
-
-    // Veja slides 95-96 do documento Aula_20_Mapeamento_de_Texturas.pdf
-    glSamplerParameteri(*sampler_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glSamplerParameteri(*sampler_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    // Parâmetros de amostragem da textura.
-    glSamplerParameteri(*sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glSamplerParameteri(*sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    // Agora enviamos a imagem lida do disco para a GPU
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, *texture_id);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, texture.width, texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture.data);
     glGenerateMipmap(GL_TEXTURE_2D);
-    glBindSampler(0, *sampler_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }

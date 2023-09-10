@@ -133,6 +133,7 @@ int main( int argc, char** argv )
     updateTextureOpenGL(texture, &texture_id, &sampler_id);
 
     cgl.buildCloseGL(VAOs, Buffers);
+    cgl.setTexture(texture);
     cgl.updateWindowSize(g_windowSize);
 
     Matrices matrices;
@@ -146,7 +147,7 @@ int main( int argc, char** argv )
     bool  useColor       = true;
     float color[3]       = { 1.0f, 1.0f, 1.0f }; // Cor sendo usada
     float nearplane      = 0.1f;                 // Posição do "near plane"
-    float farplane       = 5000.0f;              // Posição do "far plane"
+    float farplane       = 10000000.0f;          // Posição do "far plane"
     float field_of_viewV = 60.0f;                // Campo de visão Vertical
     float field_of_viewH = 60.0f;                // Campo de visão horizontal
     float last_time      = 0.0f;
@@ -194,11 +195,12 @@ int main( int argc, char** argv )
         if(g_renderType == openGL)
             renderOpenGL(openProgram, matrices, color, useColor,
             VAOs, g_mashType, g_windingOrder, g_backFaceCulling, vertices.size(),
-            shadingType, lightModels, camera_position_c, Obj.materialInfos, texture_id, sampler_id, Obj.texture);
+            shadingType, lightModels, camera_position_c, Obj.materialInfos, 
+            texture_id, sampler_id, Obj.texture, useTexture, samplingType);
         else
             cgl.renderCloseGL(closeToProgram, matrices, color, useColor,
             VAOs, g_mashType, g_windingOrder, g_backFaceCulling, Obj,
-            shadingType, camera_position_c, texture, useTexture, samplingType);
+            shadingType, camera_position_c, useTexture, samplingType);
 
         renderGUI(&g_mashType, &g_backFaceCulling, &g_windingOrder, &useColor,
                   color, &g_camStyle, &g_projectionType, &farplane, &nearplane,

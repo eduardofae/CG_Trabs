@@ -2,6 +2,9 @@
 #include <GL3/gl3w.h>
 #include <GLFW/glfw3.h>
 
+#include <stb_image.h>
+#include <stb_image_write.h>
+
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -47,6 +50,10 @@ typedef struct {
     glm::vec4 pixel_pos;
     glm::vec2 text_coords;
     float w;
+    float dsx;
+    float dsy;
+    float dtx;
+    float dty;
 } PointInfo;
 
 typedef struct {
@@ -54,10 +61,17 @@ typedef struct {
     glm::vec4 camera_position;
     std::vector <MaterialInfo> materials;
     int mashType;
-    bool hasTexture;
+    bool useTexture;
     int samplingType;
-    TextureInfo texture;
+    std::vector <TextureInfo> mipmap;
+
+    glm::vec3 lambertTerm;
 } ShaderInfo;
+    
+typedef struct {
+    TextureInfo texture;
+    std::vector <TextureInfo> mipmap;
+} Texture;
 
 typedef struct {
     int windingOrder;
@@ -73,17 +87,19 @@ class CloseToGL{
     public:
         CloseToGL() = default;
         auto buildCloseGL(GLuint *VAOs, GLuint *Buffers) -> void;
+        auto setTexture(TextureInfo &texture) -> void;
         auto renderCloseGL(GLuint program, Matrices matrices,
                            float *color, bool useColor, GLuint *VAOs,
                            int g_mashType, int g_windingOrder, int g_backFaceCulling,
                            ObjectInfo Obj, int shadingType, glm::vec4 camera_position,
-                           TextureInfo &texture, bool useTexture, int samplingType) -> void;
+                           bool useTexture, int samplingType) -> void;
         auto updateWindowSize(WindowSize windowSize) -> void;
     private:
         std::vector <Pixel> ColorBuffer;
         std::vector <float> ZBuffer;
         WindowSize  windowSize;
         ShaderInfo  shader;
+        Texture     texture;
         GLuint      textureID = 0;
         glm::mat4   view_port;
 
@@ -100,10 +116,15 @@ class CloseToGL{
         auto drawImage(ObjectInfo &Obj, Matrices matrices,  CullingInfo cullingInfo) -> void;
         auto linkTexture(GLuint program) -> void;
         auto setShaderInfo(ObjectInfo &Obj, float *color, bool useColor, int shadingType,
-                           glm::vec4 camera_position, int mashType, TextureInfo &texture,
+                           glm::vec4 camera_position, int mashType,
                            bool useTexture, int samplingType) -> void;
         auto drawLine(std::array<PointInfo, 2> vertices) -> void;
         auto sampleTexture(PointInfo &point) -> glm::vec4;
         auto interpolateColor(glm::vec4 a, glm::vec4 b, float t) -> glm::vec4;
-        auto readTexture(int x, int y) -> glm::vec4;
+        auto readTexture(int x, int y, int level) -> glm::vec4;
+        auto genMipMaps() -> void;
+        auto bilinearInterpolation(float x, float y, int level) -> glm::vec4;
+        auto trilinearInterpolation(float x, float y, float level) -> glm::vec4;
+        auto getMipMapLevel(float dsx, float dsy, float dtx, float dty) -> float;
+        auto nearestNeighbour(float x, float y) -> glm::vec4;
 };
