@@ -1,3 +1,4 @@
+#define STB_IMAGE_IMPLEMENTATION
 #include "loader.hpp"
 
 static const GLchar* ReadShader(const char* filename)
@@ -22,7 +23,6 @@ static const GLchar* ReadShader(const char* filename)
 
     return const_cast<const GLchar*>(source);
 }
-
 
 GLuint LoadShaders(ShaderLocation* shaders)
 {
@@ -117,6 +117,12 @@ ObjectInfo ReadObject(char *FileName)
         Obj.materialInfos.emplace_back(pai);
     }
 
+    char text;
+    fscanf(fp,"Texture = %c", &text);
+    Obj.texture = text == 'Y';
+
+    ch = 'b';
+    while(ch!= '\n') fscanf(fp, "%c", &ch); // skip rest of the line
     ch = 'b';
     while(ch!= '\n') fscanf(fp, "%c", &ch); // skip documentation line
     
@@ -128,13 +134,24 @@ ObjectInfo ReadObject(char *FileName)
     {
         glm::vec3 pos, norm, face_norm;
         int material_id;
-        fscanf(fp, "v%*d %f %f %f %f %f %f %d\n",
+        glm::vec2 text_coords;
+        fscanf(fp, "v%*d %f %f %f %f %f %f %d",
             &(pos.x), &(pos.y), &(pos.z),
             &(norm.x), &(norm.y), &(norm.z),
             &(material_id));
         Obj.position.emplace_back(pos);
         Obj.normal.emplace_back(norm);
         Obj.material_id.emplace_back(material_id);
+
+        if(Obj.texture){
+            fscanf(fp, " %f %f\n",
+                &(text_coords.x), &(text_coords.y));
+            Obj.texture_coords.emplace_back(text_coords);
+        }
+        else{
+            ch = 'c';
+            while(ch!= '\n') fscanf(fp, "%c", &ch);
+        }
 
         if(i == 0) { max = pos; min = pos; }
 
@@ -159,4 +176,24 @@ ObjectInfo ReadObject(char *FileName)
     Obj.center = (glm::vec3(max.x - min.x, max.y - min.y, max.z - min.z) / 2.0f) + min;
 
     return Obj;
-} 
+}
+
+
+TextureInfo LoadTextureImage(const char* filename)
+{
+    TextureInfo texture;
+
+    // Primeiro fazemos a leitura da imagem do disco
+    stbi_set_flip_vertically_on_load(true);
+
+    texture.data = stbi_load(filename, &texture.width, &texture.height, &texture.channels, 4);
+    texture.channels = 4;
+
+    if (texture.data == NULL)
+    {
+        fprintf(stderr, "ERROR: Cannot open image file \"%s\".\n", filename);
+        std::exit(EXIT_FAILURE);
+    }
+
+    return texture;
+}

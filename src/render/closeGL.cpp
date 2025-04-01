@@ -1,4 +1,8 @@
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
 #include "closeGL.hpp"
+
+#define ORIGINAL_IMAGE 0
 
 void CloseToGL::buildCloseGL(GLuint *VAOs, GLuint *Buffers)
 {
@@ -35,10 +39,48 @@ void CloseToGL::buildCloseGL(GLuint *VAOs, GLuint *Buffers)
     glEnableVertexAttribArray(vTexture);
 }
 
+void CloseToGL::setTexture(TextureInfo &texture)
+{
+    this->texture.texture = texture;
+    genMipMaps();
+}
+
+void CloseToGL::genMipMaps()
+{
+    int w = this->texture.texture.width/2;
+	int h = this->texture.texture.height/2;
+    int c = this->texture.texture.channels;
+	int level = 0;
+
+	while(w >= 1 && h >= 1){
+        unsigned char *data = (unsigned char *) malloc(w*h*c* sizeof(unsigned char)); 
+		TextureInfo texture = { w, h, c, data };
+		for(int y = 0; y < h; y++) {
+			for(int x = 0; x < w; x++) {
+				const float fx = (float) (x + 0.5f) / (float) (w);
+				const float fy = (float) (y + 0.5f) / (float) (h);
+				const glm::vec4 color = bilinearInterpolation(fx, fy, level);
+				texture.data[(y * w + x) * c    ] = std::clamp((int) (color.r * 255), 0, 255);
+                texture.data[(y * w + x) * c + 1] = std::clamp((int) (color.g * 255), 0, 255);
+                texture.data[(y * w + x) * c + 2] = std::clamp((int) (color.b * 255), 0, 255);
+                texture.data[(y * w + x) * c + 3] = std::clamp((int) (color.a * 255), 0, 255);
+			}
+		}
+		this->texture.mipmap.emplace_back(texture);
+		w /= 2;
+		h /= 2;
+		level++;
+        // char filePath[120];
+        // sprintf(filePath, "../mipmaps/%d.png", level);
+        // stbi_write_png(filePath, w, h, c, texture.data, sizeof(unsigned char) * c * w);
+	}
+}
+
 void CloseToGL::renderCloseGL(GLuint program, Matrices matrices,
                               float *color, bool useColor, GLuint *VAOs,
                               int g_mashType, int g_windingOrder, int g_backFaceCulling,
-                              ObjectInfo Obj, int shadingType, glm::vec4 camera_position)
+                              ObjectInfo Obj, int shadingType, glm::vec4 camera_position,
+                              bool useTexture, int samplingType)
 {
     glUseProgram(program);
 
@@ -46,7 +88,7 @@ void CloseToGL::renderCloseGL(GLuint program, Matrices matrices,
 
     cleanBuffers();
 
-    setShaderInfo(Obj, color, useColor, shadingType, camera_position, g_mashType);
+    setShaderInfo(Obj, color, useColor, shadingType, camera_position, g_mashType, useTexture, samplingType);
 
     CullingInfo cullingInfo = { g_windingOrder, g_backFaceCulling };
 
@@ -59,12 +101,13 @@ void CloseToGL::renderCloseGL(GLuint program, Matrices matrices,
     glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void CloseToGL::setShaderInfo(ObjectInfo &Obj, float *color, bool useColor, int shadingType, glm::vec4 camera_position, int mashType)
+void CloseToGL::setShaderInfo(ObjectInfo &Obj, float *color, bool useColor, int shadingType, glm::vec4 camera_position, 
+                              int mashType, bool useTexture, int samplingType)
 {
     glm::vec3 cor = glm::vec3(color[0], color[1], color[2]);
     for(auto &mat : Obj.materialInfos)
         mat.diffuse = useColor ? cor : mat.diffuse;
-    this->shader = { shadingType, camera_position, Obj.materialInfos, mashType };
+    this->shader = { shadingType, camera_position, Obj.materialInfos, mashType, Obj.texture && useTexture, samplingType };
 }
 
 void CloseToGL::linkTexture(GLuint program)
@@ -120,8 +163,10 @@ void CloseToGL::drawImage(ObjectInfo &Obj, Matrices matrices, CullingInfo cullin
                 p = vertices.at(j).pixel_pos / vertices.at(j).pixel_pos.w;
                 if(p.x > 1 || p.x < -1 || p.y > 1 || p.y < -1 || p.z > 1 || p.z < -1)
                     valid = false;
-                else
+                else {
+                    vertices[j].w = 1.0f/vertices.at(j).pixel_pos.w;
                     vertices[j].pixel_pos = p;
+                }
             }
         }
 
@@ -130,6 +175,10 @@ void CloseToGL::drawImage(ObjectInfo &Obj, Matrices matrices, CullingInfo cullin
                 vertices[j].pixel_pos = view_port * vertices.at(j).pixel_pos;
                 vertices[j].mat_id    = Obj.material_id.at(i+j);
                 vertices[j].norm      = matrices.invModelView * glm::vec4(Obj.normal.at(i+j), 0.0f);
+                if(shader.useTexture)
+                    vertices[j].text_coords = Obj.texture_coords.at(i+j);
+                else
+                    vertices[j].text_coords = glm::vec2(0.0f);
                 vertices[j].color     = vertex(vertices.at(j));
             }   
             backFaceCulling(vertices, cullingInfo);
@@ -140,12 +189,11 @@ void CloseToGL::drawImage(ObjectInfo &Obj, Matrices matrices, CullingInfo cullin
 void CloseToGL::rasterize(std::array<PointInfo, 3> vertices)
 {
     for(auto &vert : vertices){
-        vert.w          = 1/vert.pixel_pos.w;
-        vert.color     *= vert.w;
-        vert.pixel_pos *= vert.w;
-        vert.norm      *= vert.w;
-        vert.pos       *= vert.w;
-        vert.mat_id    *= vert.w;
+        vert.color       *= vert.w;
+        vert.norm        *= vert.w;
+        vert.pos         *= vert.w;
+        vert.mat_id      *= vert.w;
+        vert.text_coords *= vert.w;
     }
 
     for(int i = 1; i < 3; i++)
@@ -154,10 +202,6 @@ void CloseToGL::rasterize(std::array<PointInfo, 3> vertices)
 
     if(vertices[2].pixel_pos.y > vertices[1].pixel_pos.y)
         std::swap(vertices[2], vertices[1]);
-
-    assert(vertices[0].pixel_pos.y >= vertices[1].pixel_pos.y);
-    assert(vertices[0].pixel_pos.y >  vertices[2].pixel_pos.y);
-    assert(vertices[1].pixel_pos.y >= vertices[2].pixel_pos.y);
 
     if(shader.mashType == line){
         drawLine({ vertices.at(1), vertices.at(0) });
@@ -194,7 +238,8 @@ void CloseToGL::rasterize(std::array<PointInfo, 3> vertices)
     drawBotTriangle(vertices);
 }
 
-void CloseToGL::drawLine(std::array<PointInfo, 2> vertices){
+void CloseToGL::drawLine(std::array<PointInfo, 2> vertices)
+{
     int  y0   = std::ceil(vertices.at(0).pixel_pos.y);
     int  y1   = std::ceil(vertices.at(1).pixel_pos.y);
     int  x0   = std::ceil(vertices.at(0).pixel_pos.x);
@@ -215,12 +260,12 @@ void CloseToGL::drawLine(std::array<PointInfo, 2> vertices){
     PointInfo frag;
     for(;;){
         frag = interpolate(vertices.at(0), vertices.at(1), acc);
-
-        frag.color     /= frag.w;
-        frag.pixel_pos /= frag.w;
-        frag.norm      /= frag.w;
-        frag.pos       /= frag.w;
-        frag.mat_id    /= frag.w;
+        frag.color       /= frag.w;
+        frag.pixel_pos   /= frag.w;
+        frag.norm        /= frag.w;
+        frag.pos         /= frag.w;
+        frag.mat_id      /= frag.w;
+        frag.text_coords /= frag.w;
 
         p = fragment(frag);
         fillBuffers(p, x0, y0, frag.pixel_pos.z);
@@ -238,9 +283,6 @@ void CloseToGL::drawTopTriangle(std::array<PointInfo, 3> vertices)
     int start = std::ceil(vertices[2].pixel_pos.y),
         end   = std::ceil(vertices[0].pixel_pos.y);
 
-    assert(vertices[0].pixel_pos.y > vertices[1].pixel_pos.y);
-    assert(vertices[0].pixel_pos.y > vertices[2].pixel_pos.y);
-
     if(vertices[1].pixel_pos.x > vertices[2].pixel_pos.x)
         std::swap(vertices[1], vertices[2]);
 
@@ -250,6 +292,11 @@ void CloseToGL::drawTopTriangle(std::array<PointInfo, 3> vertices)
 
         left  = interpolate(vertices[0], vertices[1], t);
         right = interpolate(vertices[0], vertices[2], t);
+
+        left.dsy  = abs(left.text_coords.s  - vertices[0].text_coords.s) / abs(vertices[0].pixel_pos.y - left.pixel_pos.y);
+        left.dty  = abs(left.text_coords.t  - vertices[0].text_coords.t) / abs(vertices[0].pixel_pos.y - left.pixel_pos.y);
+        right.dsy = abs(right.text_coords.s - vertices[0].text_coords.s) / abs(vertices[0].pixel_pos.y - right.pixel_pos.y);
+        right.dty = abs(right.text_coords.t - vertices[0].text_coords.t) / abs(vertices[0].pixel_pos.y - right.pixel_pos.y);
         
         scanline(left, right, y);
     }
@@ -260,9 +307,6 @@ void CloseToGL::drawBotTriangle(std::array<PointInfo, 3> vertices)
     int start = std::ceil(vertices[0].pixel_pos.y),
         end   = std::ceil(vertices[2].pixel_pos.y);
 
-    assert(vertices[0].pixel_pos.y > vertices[1].pixel_pos.y);
-    assert(vertices[0].pixel_pos.y > vertices[2].pixel_pos.y);
-
     if(vertices[1].pixel_pos.x > vertices[2].pixel_pos.x)
         std::swap(vertices[1], vertices[2]);
 
@@ -272,6 +316,11 @@ void CloseToGL::drawBotTriangle(std::array<PointInfo, 3> vertices)
 
         left  = interpolate(vertices[1], vertices[0], t);
         right = interpolate(vertices[2], vertices[0], t);
+
+        left.dsy  = abs(left.text_coords.s  - vertices[1].text_coords.s) / abs(vertices[1].pixel_pos.y - left.pixel_pos.y);
+        left.dty  = abs(left.text_coords.t  - vertices[1].text_coords.t) / abs(vertices[1].pixel_pos.y - left.pixel_pos.y);
+        right.dsy = abs(right.text_coords.s - vertices[2].text_coords.s) / abs(vertices[2].pixel_pos.y - right.pixel_pos.y);
+        right.dty = abs(right.text_coords.t - vertices[2].text_coords.t) / abs(vertices[2].pixel_pos.y - right.pixel_pos.y);
 
         scanline(left, right, y);
     }
@@ -285,13 +334,23 @@ void CloseToGL::scanline(PointInfo left, PointInfo right, int y)
     PointInfo frag;
     Pixel p;
     for(int x = start; x < end; x++){
-        float t = (x-left.pixel_pos.x) / (right.pixel_pos.x - left.pixel_pos.x);
-        frag = interpolate(left, right, t);
-        frag.color     /= frag.w;
-        frag.pixel_pos /= frag.w;
-        frag.norm      /= frag.w;
-        frag.pos       /= frag.w;
-        frag.mat_id    /= frag.w;
+        float t  = (x-left.pixel_pos.x) / (right.pixel_pos.x - left.pixel_pos.x);
+        frag = interpolate(right, left, t);
+        
+        frag.dsx = abs(frag.text_coords.s - right.text_coords.s) / abs(right.pixel_pos.x - frag.pixel_pos.x);
+        frag.dsy = std::min(left.dsy, right.dsy);
+        frag.dtx = abs(frag.text_coords.t - right.text_coords.t) / abs(right.pixel_pos.x - frag.pixel_pos.x);
+        frag.dty = std::min(left.dty, right.dty);
+
+        frag.color       /= frag.w;
+        frag.norm        /= frag.w;
+        frag.pos         /= frag.w;
+        frag.mat_id      /= frag.w;
+        frag.text_coords /= frag.w;
+        frag.dsx         /= frag.w;
+        frag.dsy         /= frag.w;
+        frag.dtx         /= frag.w;
+        frag.dty         /= frag.w;
 
         p = fragment(frag);
         fillBuffers(p, x, y, frag.pixel_pos.z);
@@ -300,25 +359,21 @@ void CloseToGL::scanline(PointInfo left, PointInfo right, int y)
 
 PointInfo CloseToGL::interpolate(PointInfo top, PointInfo bot, float t)
 {
-    PointInfo point;
-    point.color     = top.color     * t + bot.color     * (1 - t);
-    point.mat_id    = top.mat_id    * t + bot.mat_id    * (1 - t);
-    point.norm      = top.norm      * t + bot.norm      * (1 - t);
-    point.pos       = top.pos       * t + bot.pos       * (1 - t);
-    point.pixel_pos = top.pixel_pos * t + bot.pixel_pos * (1 - t);
-    point.w         = top.w         * t + bot.w         * (1 - t);
+    PointInfo point;  
+    point.color       = top.color       * t + bot.color       * (1 - t);
+    point.mat_id      = top.mat_id      * t + bot.mat_id      * (1 - t);
+    point.norm        = top.norm        * t + bot.norm        * (1 - t);
+    point.pos         = top.pos         * t + bot.pos         * (1 - t);
+    point.pixel_pos   = top.pixel_pos   * t + bot.pixel_pos   * (1 - t);
+    point.w           = top.w           * t + bot.w           * (1 - t);
+    point.text_coords = top.text_coords * t + bot.text_coords * (1 - t);
+    point.text_coords = glm::clamp(point.text_coords, 0.0f, 1.0f);
     return point;
 }
 
 void CloseToGL::fillBuffers(Pixel p, int x, int y, float z)
 {
-    assert(x < windowSize.width);
-    assert(y < windowSize.height);
-    assert(x >= 0);
-    assert(y >= 0);
-
     const int pos = y * windowSize.width + x;
-    assert(pos < ZBuffer.size());
 
     if(z < ZBuffer.at(pos)){
         ZBuffer[pos] = z;
@@ -372,6 +427,11 @@ glm::vec4 CloseToGL::vertex(PointInfo vertex)
             lambert_diffuse_term = mat.diffuse*I*std::max(0.0f,dotproduct(n,l));
             ambient_term         = mat.ambient*Ia;
 
+            if(shader.useTexture){
+                lambert_diffuse_term  = glm::vec3(0,0,0);
+                shader.lambertTerm = I*std::max(0.0f,dotproduct(n,l));
+            }
+
             return glm::vec4(lambert_diffuse_term + ambient_term, 1.0f);
         case GouADS:
             glm::vec4 v = l;
@@ -380,6 +440,11 @@ glm::vec4 CloseToGL::vertex(PointInfo vertex)
             lambert_diffuse_term = mat.diffuse*I*std::max(0.0f,dotproduct(n,l));
             ambient_term         = mat.ambient*Ia;
             phong_specular_term  = mat.specular*I*std::pow(std::max(0.0f,dotproduct(r,v)),mat.shine);
+
+            if(shader.useTexture){
+                lambert_diffuse_term  = glm::vec3(0.0f,0.0f,0.0f);
+                shader.lambertTerm = I*std::max(0.0f,dotproduct(n,l));
+            }
 
             return glm::vec4(lambert_diffuse_term + ambient_term + phong_specular_term, 1.0f);
     }
@@ -403,11 +468,113 @@ Pixel CloseToGL::fragment(PointInfo fragment)
             glm::vec4 v = l;
             glm::vec4 r = -l + 2.0f*n*dotproduct(n,l);
 
-            glm::vec3 lambert_diffuse_term = mat.diffuse*I*std::max(0.0f,dotproduct(n,l));
+            float lambert = std::max(0.0f,dotproduct(n,l));
+            float alpha   = 1.0f; 
+
+            glm::vec3 lambert_diffuse_term = mat.diffuse*I*lambert;
             glm::vec3 ambient_term         = mat.ambient*Ia;
             glm::vec3 phong_specular_term  = mat.specular*I*std::pow(std::max(0.0f,dotproduct(r,v)),mat.shine);
+            
+            if(shader.useTexture){
+                glm::vec4 text_color = sampleTexture(fragment);
+                lambert_diffuse_term = glm::vec3(text_color)*I*lambert;   
+                alpha = text_color.w;
+            }
 
-            return Pixel(glm::vec4(lambert_diffuse_term + ambient_term + phong_specular_term, 1.0f));
+            return Pixel(glm::vec4(lambert_diffuse_term + ambient_term + phong_specular_term, alpha));
+    }
+    if(shader.useTexture){
+        glm::vec4 text_color = sampleTexture(fragment);
+        return Pixel(fragment.color + glm::vec4(glm::vec3(text_color) * shader.lambertTerm, text_color.w));
     }
     return Pixel(fragment.color);
+}
+
+glm::vec4 CloseToGL::sampleTexture(PointInfo &point)
+{
+    float x = point.text_coords.x;
+    float y = point.text_coords.y;
+    switch(shader.samplingType) 
+    {
+        case nearNeig: 
+            return nearestNeighbour(x, y);
+
+        case bilinear:
+            return bilinearInterpolation(x, y, ORIGINAL_IMAGE);
+
+        case trilinear:
+        {
+            float level = getMipMapLevel(point.dsx, point.dsy, point.dtx, point.dty);
+            if(level > texture.mipmap.size()) printf("%f", level);
+            return trilinearInterpolation(x, y, level);
+        }
+
+        default:
+            return glm::vec4(1.0f); 
+    }
+}
+
+glm::vec4 CloseToGL::interpolateColor(glm::vec4 a, glm::vec4 b, float t)
+{
+    return b * t + a * (1.0f - t);
+}
+
+glm::vec4 CloseToGL::readTexture(int x, int y, int level)
+{
+    const TextureInfo texture = level == 0 ? this->texture.texture : this->texture.mipmap.at(level - 1);
+    int text_pos = (y * texture.width + x) * texture.channels;
+
+    return glm::vec4(texture.data[text_pos], texture.data[text_pos+1], texture.data[text_pos+2], texture.data[text_pos+3])/255.0f;
+}
+
+glm::vec4 CloseToGL::bilinearInterpolation(float x, float y, int level)
+{
+    x *= level == 0 ? texture.texture.width-1  : texture.mipmap.at(level-1).width-1;
+    y *= level == 0 ? texture.texture.height-1 : texture.mipmap.at(level-1).height-1;
+
+    int x1 = std::floor(x);
+    int y1 = std::floor(y);
+    int x2 = std::ceil(x);
+    int y2 = std::ceil(y);
+    float weightX = x - x1;
+    float weightY = y - y1;
+
+    glm::vec4 colorL = readTexture(x1, y1, level);
+    glm::vec4 colorR = readTexture(x2, y1, level);
+    glm::vec4 colorT = interpolateColor(colorL, colorR, weightX);
+
+    colorL = readTexture(x1, y2, level);
+    colorR = readTexture(x2, y2, level);
+    glm::vec4 colorB = interpolateColor(colorL, colorR, weightX);
+
+    return interpolateColor(colorT, colorB, weightY);
+}
+
+glm::vec4 CloseToGL::trilinearInterpolation(float x, float y, float level)
+{
+    float weight = level - std::floor(level);
+
+    glm::vec4 floorColor = bilinearInterpolation(x, y, (int) std::floor(level));
+    glm::vec4 ceilColor  = bilinearInterpolation(x, y, (int) std::ceil(level));
+
+    return interpolateColor(floorColor, ceilColor, weight);
+}
+
+float CloseToGL::getMipMapLevel(float dsx, float dsy, float dtx, float dty)
+{
+    float dx = std::sqrt(pow(dsx, 2) + pow(dtx, 2));
+    float dy = std::sqrt(pow(dsy, 2) + pow(dty, 2));
+
+    float level = (float) (log(std::max(dx*texture.texture.width, dy*texture.texture.height)) / log(2.0));
+    if(std::isnan(level)) level = 0.0f;
+
+    return std::clamp(level, 0.0f, (float) texture.mipmap.size());
+}
+
+glm::vec4 CloseToGL::nearestNeighbour(float x, float y)
+{
+    x *= texture.texture.width-1;
+    y *= texture.texture.height-1;
+
+    return readTexture(std::round(x), std::round(y), ORIGINAL_IMAGE);
 }

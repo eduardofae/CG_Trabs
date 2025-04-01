@@ -40,6 +40,7 @@ add_subdirectory("${EXT_DIR}/glfw")
 add_library(imgui ${IMGUI_DIR}/imgui.h ${IMGUI_DIR}/imgui.cpp ${IMGUI_DIR}/imgui_draw.cpp ${IMGUI_DIR}/imgui_widgets.cpp ${IMGUI_DIR}/imgui_tables.cpp ${IMGUI_DIR}/imgui_demo.cpp ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp ${EXT_DIR}/glfw)
 include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends)
 target_link_libraries(imgui PUBLIC glfw)
+include_directories(${EXT_DIR}/stb)
 target_link_libraries(${PROJECT_NAME} PUBLIC glfw imgui)
 
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")

@@ -39,7 +39,7 @@ bool   g_backFaceCulling = true;
 int    g_mashType = triangle;
 double g_LastCursorPosX, g_LastCursorPosY;
 bool   g_rotateCam = false;
-int    g_renderType = openGL;
+int    g_renderType = closeGL;
 
 glm::vec4 g_cameraInitialPosition = glm::vec4(0.0f, 1000.0f, 1500.0f, 1.0f);
 PressedKeys g_keys{false, false, false, false, false, false};
@@ -100,7 +100,7 @@ int main( int argc, char** argv )
     lightModels[Phong]    = glGetSubroutineIndex(openProgram, GL_FRAGMENT_SHADER, "Phong");
     lightModels[NoneFrag] = glGetSubroutineIndex(openProgram, GL_FRAGMENT_SHADER, "None");
 
-    ObjectInfo Obj = ReadObject("../objs/cow.in");
+    ObjectInfo Obj = ReadObject("../objs/cube_text.in");
 
     std::vector<GLfloat> vertices;
     for(auto &obj : Obj.position){
@@ -118,15 +118,26 @@ int main( int argc, char** argv )
     for(auto &mat : Obj.material_id){
         material_id.emplace_back(mat);
     }
+    std::vector<GLfloat> text_coords;
+    for(auto &obj : Obj.texture_coords){
+        text_coords.emplace_back(obj.x);
+        text_coords.emplace_back(obj.y);
+    }
 
     glEnable(GL_DEPTH_TEST);
     glGenVertexArrays(NumVAOs, VAOs);
-    buildOpenGL(VAOs, Buffers, vertices, normals, material_id);
+
+    TextureInfo texture = LoadTextureImage("../objs/texture/checker_8x8.jpg");
+    GLuint texture_id, sampler_id;
+    buildOpenGL(VAOs, Buffers, vertices, normals, material_id, text_coords);
+    updateTextureOpenGL(texture, &texture_id, &sampler_id);
+
     cgl.buildCloseGL(VAOs, Buffers);
+    cgl.setTexture(texture);
     cgl.updateWindowSize(g_windowSize);
 
     Matrices matrices;
-    matrices.model = Matrix_Scale(1, 1, 1) * Matrix_Translate(-Obj.center.x, -Obj.center.y, -Obj.center.z);
+    matrices.model = Matrix_Scale(500, 500, 500) * Matrix_Translate(-Obj.center.x, -Obj.center.y, -Obj.center.z);
 
     glm::vec4 camera_position_c  = g_cameraInitialPosition;                         // Ponto "c", centro da câmera
     glm::vec4 camera_lookat_l    = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);               // Ponto "l", para onde a câmera (look-at) estará sempre olhando
@@ -136,12 +147,14 @@ int main( int argc, char** argv )
     bool  useColor       = true;
     float color[3]       = { 1.0f, 1.0f, 1.0f }; // Cor sendo usada
     float nearplane      = 0.1f;                 // Posição do "near plane"
-    float farplane       = 5000.0f;              // Posição do "far plane"
+    float farplane       = 10000000.0f;          // Posição do "far plane"
     float field_of_viewV = 60.0f;                // Campo de visão Vertical
     float field_of_viewH = 60.0f;                // Campo de visão horizontal
     float last_time      = 0.0f;
     bool  symmetric      = true;
-    int   shadingType    = NoneVert;
+    int   shadingType    = Phong;
+    bool  useTexture     = true;
+    int   samplingType   = bilinear;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -182,18 +195,20 @@ int main( int argc, char** argv )
         if(g_renderType == openGL)
             renderOpenGL(openProgram, matrices, color, useColor,
             VAOs, g_mashType, g_windingOrder, g_backFaceCulling, vertices.size(),
-            shadingType, lightModels, camera_position_c, Obj.materialInfos);
+            shadingType, lightModels, camera_position_c, Obj.materialInfos, 
+            texture_id, sampler_id, Obj.texture, useTexture, samplingType);
         else
             cgl.renderCloseGL(closeToProgram, matrices, color, useColor,
             VAOs, g_mashType, g_windingOrder, g_backFaceCulling, Obj,
-            shadingType, camera_position_c);
+            shadingType, camera_position_c, useTexture, samplingType);
 
         renderGUI(&g_mashType, &g_backFaceCulling, &g_windingOrder, &useColor,
                   color, &g_camStyle, &g_projectionType, &farplane, &nearplane,
                   &field_of_viewV, &g_CameraDistance,
                   &camera_position_c, g_cameraInitialPosition,
                   &camera_view_vector, camera_lookat_l,
-                  &g_renderType, delta_time, &field_of_viewH, &symmetric, &shadingType);
+                  &g_renderType, delta_time, &field_of_viewH, &symmetric, &shadingType,
+                  &useTexture, &samplingType);
 
         glfwSwapBuffers(window);
         glfwPollEvents();

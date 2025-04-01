@@ -1,5 +1,6 @@
 #include <GL3/gl3.h>
 #include <GL3/gl3w.h>
+#include <stb_image.h>
 
 #include <GLFW/glfw3.h>
 
@@ -8,6 +9,7 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <string>
 
 // Headers da biblioteca GLM: criação de matrizes e vetores.
 #include <glm/mat4x4.hpp>
@@ -28,3 +30,4 @@ typedef struct {
 static const GLchar* ReadShader(const char* filename);
 GLuint LoadShaders(ShaderLocation* shaders);
 ObjectInfo ReadObject(char *FileName);
+TextureInfo LoadTextureImage(const char* filename);

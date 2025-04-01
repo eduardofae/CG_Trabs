@@ -1,6 +1,8 @@
 #include "openGL.hpp"
 
-void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, std::vector<GLfloat> normals, std::vector<GLint> material_id)
+void buildOpenGL(GLuint *VAOs, GLuint *Buffers,
+                 std::vector<GLfloat> vertices, std::vector<GLfloat> normals,
+                 std::vector<GLint> material_id, std::vector<GLfloat> text_coords)
 {
     glBindVertexArray(VAOs[OpenGL]);
 
@@ -25,13 +27,21 @@ void buildOpenGL(GLuint *VAOs, GLuint *Buffers, std::vector<GLfloat> vertices, s
     glVertexAttribPointer(vMaterialId, 1, GL_INT,
         GL_FALSE, 0, BUFFER_OFFSET(0));
     glEnableVertexAttribArray(vMaterialId);
+
+    glBindBuffer(GL_ARRAY_BUFFER, Buffers[TextureBuffer]);
+    glBufferStorage(GL_ARRAY_BUFFER, text_coords.size()*sizeof(GLfloat), text_coords.data(), 0);
+
+    glVertexAttribPointer(vTexture, 2, GL_FLOAT,
+        GL_FALSE, 0, BUFFER_OFFSET(0));
+    glEnableVertexAttribArray(vTexture);
 }
 
 void renderOpenGL(GLuint program, Matrices matrices,
                   float *color, bool useColor, GLuint *VAOs,
                   int g_mashType, int g_windingOrder, int g_backFaceCulling, int size,
                   int shadingType, GLuint *lightModels, glm::vec4 camera_position,
-                  std::vector <MaterialInfo> materials)
+                  std::vector <MaterialInfo> materials, GLuint texture_id, GLuint sampler_id,
+                  bool hasTexture, bool useTexture, int samplingType)
 {
     glUseProgram(program);
 
@@ -55,11 +65,28 @@ void renderOpenGL(GLuint program, Matrices matrices,
             break;
     }
 
+    switch (samplingType) 
+    {
+        case nearNeig:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            break;
+        case bilinear:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            break;
+        case trilinear:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        
+    }
+
     glUniformMatrix4fv(glGetUniformLocation(program, "model")             , 1 , GL_FALSE , glm::value_ptr(matrices.model));
     glUniformMatrix4fv(glGetUniformLocation(program, "view")              , 1 , GL_FALSE , glm::value_ptr(matrices.view));
     glUniformMatrix4fv(glGetUniformLocation(program, "projection")        , 1 , GL_FALSE , glm::value_ptr(matrices.proj));
 
     glUniform4fv(glGetUniformLocation(program, "camera_position")         , 1            , glm::value_ptr(camera_position));
+    glUniform1i(glGetUniformLocation(program, "useTexture")                              , hasTexture && useTexture);
 
     for(int i = 0; i < materials.size(); i++){
         std::string mat = "materials[" + std::to_string(i) + "].";
@@ -73,6 +100,8 @@ void renderOpenGL(GLuint program, Matrices matrices,
     };
     
     glBindVertexArray(VAOs[OpenGL]);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glBindSampler(0, sampler_id);
 
     switch (g_mashType){
         case point:
@@ -94,4 +123,15 @@ void renderOpenGL(GLuint program, Matrices matrices,
     else glDisable(GL_CULL_FACE);
 
     glDrawArrays(GL_TRIANGLES, 0, size);
+}
+
+void updateTextureOpenGL(TextureInfo &texture, GLuint *texture_id, GLuint *sampler_id)
+{
+    glGenTextures(1, texture_id);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, *texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, texture.width, texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture.data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 }
